@@ -109,7 +109,8 @@
             border-left: 4px solid var(--success);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .header-right .dot {
@@ -118,6 +119,17 @@
             height: 8px;
             border-radius: 50%;
             background: var(--success);
+            flex-shrink: 0;
+        }
+
+        .header-right #statusBadge {
+            font-weight: 700;
+        }
+
+        .header-right #statusText {
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: #475569;
         }
 
         .main-grid {
@@ -352,7 +364,6 @@
             padding: 32px;
         }
 
-        /* Upload prompt (visible when no PDF) */
         .upload-prompt {
             display: flex;
             flex-direction: column;
@@ -383,7 +394,6 @@
             margin-bottom: 24px;
         }
 
-        /* Canvas (hidden until PDF loaded) */
         #pdfCanvas {
             display: none;
             max-width: 100%;
@@ -397,31 +407,7 @@
             cursor: grabbing;
         }
 
-        .status-bar {
-            margin-top: 20px;
-            padding: 10px 16px;
-            background: var(--bg-card);
-            border-radius: 10px;
-            font-size: 0.78rem;
-            font-weight: 500;
-            color: #475569;
-            border: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            max-width: 100%;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-        }
-
-        .status-bar .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--success);
-            flex-shrink: 0;
-        }
+        /* Bottom status bar removed – content moved to header-right */
 
         .object-list {
             margin-top: 8px;
@@ -621,6 +607,7 @@
             .header-right {
                 justify-content: center;
                 font-size: 0.78rem;
+                padding: 6px 12px;
             }
             .field-row {
                 grid-template-columns: 1fr;
@@ -657,8 +644,9 @@
                 </div>
             </div>
             <div class="header-right">
-                <span class="dot"></span>
+                <span class="dot" id="headerDot"></span>
                 <span id="statusBadge">Ready</span>
+                <span id="statusText">Upload a PDF to get started</span>
             </div>
         </header>
 
@@ -779,11 +767,6 @@
 
                 <!-- Canvas (hidden until PDF loaded) -->
                 <canvas id="pdfCanvas" willReadFrequently="true"></canvas>
-
-                <div class="status-bar">
-                    <span class="dot"></span>
-                    <span id="statusText">Upload a PDF to get started</span>
-                </div>
             </main>
         </div>
     </div>
@@ -848,6 +831,7 @@
             const drawSignatureBtn = document.getElementById('drawSignatureBtn');
             const statusText = document.getElementById('statusText');
             const statusBadge = document.getElementById('statusBadge');
+            const headerDot = document.getElementById('headerDot');
             const objectListDiv = document.getElementById('objectList');
 
             // ─── Signature modal ───
@@ -929,8 +913,12 @@
             function setStatus(msg, good = true) {
                 statusText.textContent = msg;
                 statusBadge.textContent = good ? 'Ready' : 'Error';
-                const dot = document.querySelector('.status-bar .dot');
-                if (dot) dot.style.background = good ? '#27ae60' : '#e74c3c';
+                headerDot.style.background = good ? '#27ae60' : '#e74c3c';
+                // Also update the border-left color of header-right to match
+                const headerRight = document.querySelector('.header-right');
+                if (headerRight) {
+                    headerRight.style.borderLeftColor = good ? '#27ae60' : '#e74c3c';
+                }
             }
 
             // ─── Geometry helpers ───
@@ -1971,7 +1959,7 @@
             changePdfBtn.style.display = 'none';
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Transformable Media (upload moved to canvas)');
+            console.log('✅ PDF Editor – Transformable Media (status moved to header)');
         })();
     </script>
 </body>
