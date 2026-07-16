@@ -338,10 +338,10 @@
             display: none;
         }
 
+        /* ── Canvas Desk Workspace ── */
         .canvas-wrapper {
             background: #edf2f7;
             border-radius: 16px;
-            padding: 32px;
             border: 1px dashed #cbd5e1;
             display: flex;
             flex-direction: column;
@@ -349,19 +349,51 @@
             justify-content: center;
             min-height: 600px;
             position: relative;
+            padding: 32px;
         }
 
-        .canvas-wrapper canvas {
-            display: block;
+        /* Upload prompt (visible when no PDF) */
+        .upload-prompt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            text-align: center;
+            background: white;
+            border-radius: 16px;
+            padding: 40px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        }
+        .upload-prompt .upload-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .upload-prompt h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+        .upload-prompt p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 24px;
+        }
+
+        /* Canvas (hidden until PDF loaded) */
+        #pdfCanvas {
+            display: none;
             max-width: 100%;
             height: auto !important;
             background: white;
-            cursor: default;
             border-radius: 4px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            cursor: default;
         }
-
-        .canvas-wrapper canvas.dragging {
+        #pdfCanvas.dragging {
             cursor: grabbing;
         }
 
@@ -448,7 +480,6 @@
         .object-tag .tag-btn:hover {
             opacity: 1;
         }
-
         .object-tag .tag-edit {
             color: var(--primary);
         }
@@ -464,6 +495,7 @@
             padding: 4px 0;
         }
 
+        /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -547,6 +579,7 @@
             gap: 10px;
         }
 
+        /* Responsive */
         @media (max-width: 1024px) {
             .main-grid {
                 grid-template-columns: 280px 1fr;
@@ -631,18 +664,19 @@
 
         <div class="main-grid">
             <aside class="sidebar">
+                <!-- Document section: page navigation + change PDF -->
                 <div class="section">
                     <div class="section-title">Document</div>
-                    <div class="field">
-                        <label class="field-label" for="fileInput">Upload PDF</label>
-                        <input type="file" id="fileInput" accept=".pdf" class="field-input field-input-sm" />
-                    </div>
-                    <div class="field-row" style="margin-top:10px;">
+                    <div class="field-row" style="margin-top: 0;">
                         <button id="prevPageBtn" class="btn btn-secondary btn-sm btn-block" disabled>◀ Prev</button>
                         <button id="nextPageBtn" class="btn btn-secondary btn-sm btn-block" disabled>Next ▶</button>
                     </div>
+                    <div style="margin-top:10px;">
+                        <button id="changePdfBtn" class="btn btn-primary btn-sm btn-block" style="display:none;">📂 Change PDF</button>
+                    </div>
                 </div>
 
+                <!-- Text controls -->
                 <div class="section">
                     <div class="section-title">Text</div>
                     <div class="field">
@@ -702,6 +736,7 @@
                     </div>
                 </div>
 
+                <!-- Insert -->
                 <div class="section">
                     <div class="section-title">Insert</div>
                     <div class="btn-group">
@@ -711,6 +746,7 @@
                     <input type="file" id="imageFileInput" accept="image/*" />
                 </div>
 
+                <!-- Actions -->
                 <div class="section">
                     <div class="section-title">Actions</div>
                     <div class="btn-group">
@@ -724,6 +760,7 @@
                     </div>
                 </div>
 
+                <!-- Object list -->
                 <div class="section" style="flex:1;">
                     <div class="section-title">Objects (This Page)</div>
                     <div id="objectList" class="object-list"><span class="empty-state">No objects</span></div>
@@ -731,7 +768,18 @@
             </aside>
 
             <main class="canvas-wrapper">
+                <!-- Upload prompt (visible when no PDF) -->
+                <div id="uploadPrompt" class="upload-prompt">
+                    <div class="upload-icon">📄</div>
+                    <h2>Upload a PDF</h2>
+                    <p>Drag &amp; drop or click to select a PDF file</p>
+                    <button id="uploadButton" class="btn btn-primary">Choose PDF</button>
+                    <input type="file" id="fileInput" accept=".pdf" style="display:none;" />
+                </div>
+
+                <!-- Canvas (hidden until PDF loaded) -->
                 <canvas id="pdfCanvas" willReadFrequently="true"></canvas>
+
                 <div class="status-bar">
                     <span class="dot"></span>
                     <span id="statusText">Upload a PDF to get started</span>
@@ -740,6 +788,7 @@
         </div>
     </div>
 
+    <!-- Signature Modal -->
     <div class="modal-overlay" id="signatureModal">
         <div class="modal-content">
             <div class="modal-title">
@@ -774,6 +823,11 @@
 
             // ─── DOM refs ───
             const fileInput = document.getElementById('fileInput');
+            const uploadPrompt = document.getElementById('uploadPrompt');
+            const uploadButton = document.getElementById('uploadButton');
+            const changePdfBtn = document.getElementById('changePdfBtn');
+            const canvas = document.getElementById('pdfCanvas');
+            const ctx = canvas.getContext('2d');
             const prevPageBtn = document.getElementById('prevPageBtn');
             const nextPageBtn = document.getElementById('nextPageBtn');
             const textInput = document.getElementById('textInput');
@@ -792,8 +846,6 @@
             const addImageBtn = document.getElementById('addImageBtn');
             const imageFileInput = document.getElementById('imageFileInput');
             const drawSignatureBtn = document.getElementById('drawSignatureBtn');
-            const canvas = document.getElementById('pdfCanvas');
-            const ctx = canvas.getContext('2d');
             const statusText = document.getElementById('statusText');
             const statusBadge = document.getElementById('statusBadge');
             const objectListDiv = document.getElementById('objectList');
@@ -824,9 +876,8 @@
             let isRendering = false;
             let pendingRender = false;
 
-            // Transform state
-            let transformMode = null; // 'resize' | 'rotate'
-            let transformHandle = null; // 'tl','tc','tr','ml','mr','bl','bc','br'
+            let transformMode = null;
+            let transformHandle = null;
             let startMouseX = 0,
                 startMouseY = 0;
             let startObjX = 0,
@@ -941,10 +992,120 @@
                 return Math.abs(lx) <= hw && Math.abs(ly) <= hh;
             }
 
-            // Get text object's bounding box (width/height) for transform
-            function getTextBoundingBox(obj) {
-                const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
-                return { width: dims.width, height: dims.height };
+            function drawTransformHandles(obj, w, h) {
+                const corners = [
+                    { x: obj.x, y: obj.y },
+                    { x: obj.x + w, y: obj.y },
+                    { x: obj.x + w, y: obj.y + h },
+                    { x: obj.x, y: obj.y + h }
+                ];
+                const midpoints = [
+                    { x: obj.x + w / 2, y: obj.y },
+                    { x: obj.x + w, y: obj.y + h / 2 },
+                    { x: obj.x + w / 2, y: obj.y + h },
+                    { x: obj.x, y: obj.y + h / 2 }
+                ];
+                const allPoints = [...corners, ...midpoints];
+                const labels = ['tl', 'tr', 'br', 'bl', 'tc', 'mr', 'bc', 'ml'];
+
+                const rot = obj.rotation || 0;
+                const cx = obj.x + w / 2;
+                const cy = obj.y + h / 2;
+                const angle = rot * Math.PI / 180;
+
+                const rCorners = [
+                    { x: -w / 2, y: -h / 2 },
+                    { x: w / 2, y: -h / 2 },
+                    { x: w / 2, y: h / 2 },
+                    { x: -w / 2, y: h / 2 }
+                ].map(p => ({
+                    x: cx + p.x * Math.cos(angle) - p.y * Math.sin(angle),
+                    y: cy + p.x * Math.sin(angle) + p.y * Math.cos(angle)
+                }));
+
+                ctx.beginPath();
+                ctx.moveTo(rCorners[0].x, rCorners[0].y);
+                for (let i = 1; i < 4; i++) ctx.lineTo(rCorners[i].x, rCorners[i].y);
+                ctx.closePath();
+                ctx.strokeStyle = '#1a4b60';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const rMidpoints = [
+                    { x: (rCorners[0].x + rCorners[1].x) / 2, y: (rCorners[0].y + rCorners[1].y) / 2 },
+                    { x: (rCorners[1].x + rCorners[2].x) / 2, y: (rCorners[1].y + rCorners[2].y) / 2 },
+                    { x: (rCorners[2].x + rCorners[3].x) / 2, y: (rCorners[2].y + rCorners[3].y) / 2 },
+                    { x: (rCorners[3].x + rCorners[0].x) / 2, y: (rCorners[3].y + rCorners[0].y) / 2 }
+                ];
+
+                const handlePoints = [...rCorners, ...rMidpoints];
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#1a4b60';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < handlePoints.length; i++) {
+                    const p = handlePoints[i];
+                    ctx.beginPath();
+                    ctx.rect(p.x - 4, p.y - 4, 8, 8);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                const topMid = rMidpoints[0];
+                const dx = topMid.x - cx;
+                const dy = topMid.y - cy;
+                const dist = Math.hypot(dx, dy);
+                let rotHandleX, rotHandleY;
+                if (dist === 0) {
+                    rotHandleX = cx;
+                    rotHandleY = cy - 40;
+                } else {
+                    const s = (dist + 30) / dist;
+                    rotHandleX = cx + dx * s;
+                    rotHandleY = cy + dy * s;
+                }
+
+                ctx.beginPath();
+                ctx.arc(rotHandleX, rotHandleY, 8, 0, 2 * Math.PI);
+                ctx.fillStyle = '#f39c12';
+                ctx.fill();
+                ctx.strokeStyle = '#1a4b60';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(topMid.x, topMid.y);
+                ctx.lineTo(rotHandleX, rotHandleY);
+                ctx.strokeStyle = '#1a4b60';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                obj._handles = {
+                    corners: rCorners,
+                    midpoints: rMidpoints,
+                    rotHandle: { x: rotHandleX, y: rotHandleY },
+                    labels: labels
+                };
+            }
+
+            function getHandleAt(mx, my, obj) {
+                if (!obj._handles) return null;
+                const { corners, midpoints, rotHandle } = obj._handles;
+                const allPoints = [...corners, ...midpoints];
+                const labels = ['tl', 'tr', 'br', 'bl', 'tc', 'mr', 'bc', 'ml'];
+                for (let i = 0; i < allPoints.length; i++) {
+                    const p = allPoints[i];
+                    if (Math.abs(mx - p.x) < 10 && Math.abs(my - p.y) < 10) {
+                        return { type: 'resize', handle: labels[i] };
+                    }
+                }
+                if (Math.abs(mx - rotHandle.x) < 12 && Math.abs(my - rotHandle.y) < 12) {
+                    return { type: 'rotate' };
+                }
+                return null;
             }
 
             // ─── Render ───
@@ -982,8 +1143,6 @@
                                 h = dims.height;
                             const x = obj.x,
                                 y = obj.y;
-
-                            // Store computed width/height on obj for transform
                             obj._computedWidth = w;
                             obj._computedHeight = h;
 
@@ -992,7 +1151,6 @@
                                 ctx.fillRect(x, y, w, h);
                             }
 
-                            // Selection / editing border
                             let bc = 'rgba(26,75,96,0.2)';
                             let bw = 1,
                                 dash = [];
@@ -1012,7 +1170,6 @@
                             ctx.textBaseline = 'top';
                             ctx.fillText(obj.lines[0], x, y);
 
-                            // Transform handles for text when selected
                             if (editingId === obj.id) {
                                 drawTransformHandles(obj, w, h);
                             }
@@ -1052,135 +1209,6 @@
                 }
             }
 
-            // ─── Draw transform handles (shared for all object types) ───
-            function drawTransformHandles(obj, w, h) {
-                // For text objects, we use the computed width/height stored in obj._computedWidth/_computedHeight
-                // but we pass w/h explicitly here.
-                const corners = [
-                    { x: obj.x, y: obj.y },
-                    { x: obj.x + w, y: obj.y },
-                    { x: obj.x + w, y: obj.y + h },
-                    { x: obj.x, y: obj.y + h }
-                ];
-                const midpoints = [
-                    { x: obj.x + w / 2, y: obj.y },
-                    { x: obj.x + w, y: obj.y + h / 2 },
-                    { x: obj.x + w / 2, y: obj.y + h },
-                    { x: obj.x, y: obj.y + h / 2 }
-                ];
-                const allPoints = [...corners, ...midpoints];
-                const labels = ['tl', 'tr', 'br', 'bl', 'tc', 'mr', 'bc', 'ml'];
-
-                // Draw bounding box (rotated if rotation exists)
-                // For text, we use the stored rotation (if any)
-                const rot = obj.rotation || 0;
-                const cx = obj.x + w / 2;
-                const cy = obj.y + h / 2;
-                const angle = rot * Math.PI / 180;
-
-                // Compute rotated corners
-                const rCorners = [
-                    { x: -w / 2, y: -h / 2 },
-                    { x: w / 2, y: -h / 2 },
-                    { x: w / 2, y: h / 2 },
-                    { x: -w / 2, y: h / 2 }
-                ].map(p => ({
-                    x: cx + p.x * Math.cos(angle) - p.y * Math.sin(angle),
-                    y: cy + p.x * Math.sin(angle) + p.y * Math.cos(angle)
-                }));
-
-                // Draw bounding box
-                ctx.beginPath();
-                ctx.moveTo(rCorners[0].x, rCorners[0].y);
-                for (let i = 1; i < 4; i++) ctx.lineTo(rCorners[i].x, rCorners[i].y);
-                ctx.closePath();
-                ctx.strokeStyle = '#1a4b60';
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 4]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // Compute rotated midpoints
-                const rMidpoints = [
-                    { x: (rCorners[0].x + rCorners[1].x) / 2, y: (rCorners[0].y + rCorners[1].y) / 2 },
-                    { x: (rCorners[1].x + rCorners[2].x) / 2, y: (rCorners[1].y + rCorners[2].y) / 2 },
-                    { x: (rCorners[2].x + rCorners[3].x) / 2, y: (rCorners[2].y + rCorners[3].y) / 2 },
-                    { x: (rCorners[3].x + rCorners[0].x) / 2, y: (rCorners[3].y + rCorners[0].y) / 2 }
-                ];
-
-                const handlePoints = [...rCorners, ...rMidpoints];
-
-                // Draw 8 resize handles
-                ctx.fillStyle = '#ffffff';
-                ctx.strokeStyle = '#1a4b60';
-                ctx.lineWidth = 1.5;
-                for (let i = 0; i < handlePoints.length; i++) {
-                    const p = handlePoints[i];
-                    ctx.beginPath();
-                    ctx.rect(p.x - 4, p.y - 4, 8, 8);
-                    ctx.fill();
-                    ctx.stroke();
-                }
-
-                // Rotate handle
-                const topMid = rMidpoints[0];
-                const dx = topMid.x - cx;
-                const dy = topMid.y - cy;
-                const dist = Math.hypot(dx, dy);
-                let rotHandleX, rotHandleY;
-                if (dist === 0) {
-                    rotHandleX = cx;
-                    rotHandleY = cy - 40;
-                } else {
-                    const s = (dist + 30) / dist;
-                    rotHandleX = cx + dx * s;
-                    rotHandleY = cy + dy * s;
-                }
-
-                ctx.beginPath();
-                ctx.arc(rotHandleX, rotHandleY, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = '#f39c12';
-                ctx.fill();
-                ctx.strokeStyle = '#1a4b60';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(topMid.x, topMid.y);
-                ctx.lineTo(rotHandleX, rotHandleY);
-                ctx.strokeStyle = '#1a4b60';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([4, 4]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // Store handle positions for hit testing (on the obj)
-                obj._handles = {
-                    corners: rCorners,
-                    midpoints: rMidpoints,
-                    rotHandle: { x: rotHandleX, y: rotHandleY },
-                    labels: labels
-                };
-            }
-
-            // ─── Hit testing for handles ───
-            function getHandleAt(mx, my, obj) {
-                if (!obj._handles) return null;
-                const { corners, midpoints, rotHandle } = obj._handles;
-                const allPoints = [...corners, ...midpoints];
-                const labels = ['tl', 'tr', 'br', 'bl', 'tc', 'mr', 'bc', 'ml'];
-                for (let i = 0; i < allPoints.length; i++) {
-                    const p = allPoints[i];
-                    if (Math.abs(mx - p.x) < 10 && Math.abs(my - p.y) < 10) {
-                        return { type: 'resize', handle: labels[i] };
-                    }
-                }
-                if (Math.abs(mx - rotHandle.x) < 12 && Math.abs(my - rotHandle.y) < 12) {
-                    return { type: 'rotate' };
-                }
-                return null;
-            }
-
             // ─── Load PDF ───
             async function loadPDF(file) {
                 pdfFile = file;
@@ -1200,11 +1228,17 @@
                 actionBtn.textContent = '➕ Add';
                 cancelBtn.style.display = 'none';
                 deleteSelectedBtn.style.display = 'none';
+
+                // Switch UI: hide upload prompt, show canvas, show change PDF button
+                uploadPrompt.style.display = 'none';
+                canvas.style.display = 'block';
+                changePdfBtn.style.display = 'inline-flex';
+
                 setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
                 await renderOverlay();
             }
 
-            // ─── Add / Update Text ───
+            // ─── Text save ───
             function saveText() {
                 if (!pdfDoc) { alert('Please upload a PDF first.'); return; }
 
@@ -1220,7 +1254,6 @@
                 if (editingId !== null) {
                     const obj = objects.find(o => o.id === editingId);
                     if (obj && obj.type === 'text') {
-                        // Preserve page and rotation
                         const oldPage = obj.page;
                         const oldRot = obj.rotation || 0;
                         Object.assign(obj, {
@@ -1515,14 +1548,6 @@
                                 font,
                                 color: PDFLib.rgb(trgb.r, trgb.g, trgb.b),
                             });
-                            // Handle rotation for text (using rotate parameter)
-                            if (obj.rotation) {
-                                // pdf-lib's drawText supports rotate via xSkew/ySkew or rotate property
-                                // We'll re-draw with rotation if needed
-                                // Actually, pdf-lib drawText doesn't have a direct rotate param, we use xSkew/ySkew
-                                // But for simplicity, we'll skip rotation for text in PDF save for now
-                                // since the main fix is for the canvas interaction.
-                            }
                         } else if (obj.type === 'image' || obj.type === 'signature') {
                             const resp = await fetch(obj.data);
                             const blob = await resp.blob();
@@ -1568,7 +1593,7 @@
                 { r: 0, g: 0, b: 0 };
             }
 
-            // ─── Find object at (canvas coords) ───
+            // ─── Hit testing ───
             function findObjectAt(mx, my) {
                 const activeObjects = objects.filter(o => o.page === currentPageIndex);
                 for (let i = activeObjects.length - 1; i >= 0; i--) {
@@ -1577,7 +1602,6 @@
                         const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
                         const w = dims.width,
                             h = dims.height;
-                        // Check with rotation if present
                         if (obj.rotation && obj.rotation !== 0) {
                             if (isPointInRotatedRect({ x: obj.x, y: obj.y, width: w, height: h, rotation: obj.rotation },
                                     mx, my)) {
@@ -1608,16 +1632,13 @@
                 const { x, y } = getCanvasCoords(e);
                 const hitObj = findObjectAt(x, y);
 
-                // Check handle on selected object
                 if (editingId !== null) {
                     const selectedObj = objects.find(o => o.id === editingId);
                     if (selectedObj) {
-                        // Ensure handles are computed
                         if (selectedObj.type === 'text') {
                             const dims = getTextDimensions(selectedObj.lines[0], selectedObj.font, selectedObj.size);
                             selectedObj._computedWidth = dims.width;
                             selectedObj._computedHeight = dims.height;
-                            // Force handle regeneration
                             selectedObj._handles = null;
                             drawTransformHandles(selectedObj, dims.width, dims.height);
                         } else {
@@ -1665,7 +1686,6 @@
             function onMouseMove(e) {
                 const { x, y } = getCanvasCoords(e);
 
-                // Resize
                 if (transformMode === 'resize' && editingId !== null) {
                     const obj = objects.find(o => o.id === editingId);
                     if (!obj) return;
@@ -1678,8 +1698,6 @@
                     const shift = e.shiftKey;
 
                     if (obj.type === 'text') {
-                        // For text, resize changes the font size proportionally
-                        // We use the diagonal drag distance to scale the size
                         const dragDist = Math.hypot(dx, dy);
                         const startDiag = Math.hypot(startObjW, startObjH);
                         if (startDiag > 0) {
@@ -1688,14 +1706,10 @@
                             scaleFactor = Math.max(0.2, Math.min(5, scaleFactor));
                             const newSize = Math.max(6, startObjSize * scaleFactor);
                             obj.size = newSize;
-                            // Update position to keep the top-left corner anchored
-                            const dims = getTextDimensions(obj.lines[0], obj.font, newSize);
-                            // We keep the top-left corner fixed
                             obj.x = startObjX;
                             obj.y = startObjY;
                         }
                     } else {
-                        // Image/signature resize
                         switch (transformHandle) {
                             case 'tl':
                                 newX = startObjX + dx;
@@ -1761,7 +1775,6 @@
                     return;
                 }
 
-                // Rotate
                 if (transformMode === 'rotate' && editingId !== null) {
                     const obj = objects.find(o => o.id === editingId);
                     if (!obj) return;
@@ -1783,7 +1796,6 @@
                     return;
                 }
 
-                // Drag
                 if (draggingItem !== null) {
                     const obj = objects.find(o => o.id === draggingItem);
                     if (obj) {
@@ -1795,7 +1807,6 @@
                     return;
                 }
 
-                // Hover cursor
                 if (editingId !== null) {
                     const selectedObj = objects.find(o => o.id === editingId);
                     if (selectedObj) {
@@ -1853,8 +1864,19 @@
             }
 
             // ─── Event Bindings ───
-            fileInput.addEventListener('change', (e) => { if (e.target.files[0]) loadPDF(e.target.files[0]); });
 
+            // Upload triggers
+            uploadButton.addEventListener('click', () => fileInput.click());
+            changePdfBtn.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    loadPDF(e.target.files[0]);
+                    fileInput.value = ''; // allow re-upload of same file
+                }
+            });
+
+            // Page navigation
             prevPageBtn.addEventListener('click', () => {
                 if (currentPageIndex > 0) {
                     currentPageIndex--;
@@ -1871,6 +1893,7 @@
                 }
             });
 
+            // Text actions
             actionBtn.addEventListener('click', () => {
                 const obj = editingId !== null ? objects.find(o => o.id === editingId) : null;
                 if (obj && obj.type !== 'text') { cancelEditing(); return; }
@@ -1882,12 +1905,14 @@
             saveBtn.addEventListener('click', savePDF);
             textInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') saveText(); });
 
+            // Image
             addImageBtn.addEventListener('click', () => imageFileInput.click());
             imageFileInput.addEventListener('change', (e) => {
                 if (e.target.files[0]) { addImage(e.target.files[0]);
                     imageFileInput.value = ''; }
             });
 
+            // Signature
             drawSignatureBtn.addEventListener('click', openModal);
             sigCloseBtn.addEventListener('click', closeModal);
             sigCancelBtn.addEventListener('click', closeModal);
@@ -1915,6 +1940,7 @@
                 sigCanvas.dispatchEvent(new MouseEvent('mouseup', {}));
             }, { passive: false });
 
+            // Canvas interactions
             canvas.addEventListener('mousedown', onMouseDown);
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
@@ -1939,8 +1965,13 @@
                 }
             }, { passive: false });
 
+            // Initial state: no PDF, show upload prompt, hide canvas, hide changePdfBtn
+            uploadPrompt.style.display = 'flex';
+            canvas.style.display = 'none';
+            changePdfBtn.style.display = 'none';
             setStatus('📄 Upload a PDF to get started');
-            console.log('✅ PDF Editor – Transformable Media ready (fixed)');
+
+            console.log('✅ PDF Editor – Transformable Media (upload moved to canvas)');
         })();
     </script>
 </body>
