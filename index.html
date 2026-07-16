@@ -234,16 +234,21 @@
             white-space: nowrap;
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-primary {
             background: #1a4b60;
             color: white;
         }
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #143a4b;
         }
 
@@ -251,7 +256,7 @@
             background: #27ae60;
             color: white;
         }
-        .btn-success:hover {
+        .btn-success:hover:not(:disabled) {
             background: #1e8f4e;
         }
 
@@ -259,7 +264,7 @@
             background: #e74c3c;
             color: white;
         }
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: #c0392b;
         }
 
@@ -267,7 +272,7 @@
             background: #f39c12;
             color: white;
         }
-        .btn-warning:hover {
+        .btn-warning:hover:not(:disabled) {
             background: #d68910;
         }
 
@@ -275,7 +280,7 @@
             background: #e2e8f0;
             color: #1e293b;
         }
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #cbd5e1;
         }
 
@@ -573,6 +578,10 @@
                         <label class="field-label" for="fileInput">Upload PDF</label>
                         <input type="file" id="fileInput" accept=".pdf" class="field-input field-input-sm" />
                     </div>
+                    <div class="field-row" style="margin-top: 10px;">
+                        <button id="prevPageBtn" class="btn btn-secondary btn-sm btn-block" disabled>◀ Prev</button>
+                        <button id="nextPageBtn" class="btn btn-secondary btn-sm btn-block" disabled>Next ▶</button>
+                    </div>
                 </div>
 
                 <div class="section">
@@ -657,7 +666,7 @@
                 </div>
 
                 <div class="section" style="flex:1;">
-                    <div class="section-title">Objects</div>
+                    <div class="section-title">Objects (This Page)</div>
                     <div id="objectList" class="object-list"><span class="empty-state">No objects</span></div>
                 </div>
             </aside>
@@ -706,6 +715,8 @@
 
             // ─── DOM refs ───
             const fileInput = document.getElementById('fileInput');
+            const prevPageBtn = document.getElementById('prevPageBtn');
+            const nextPageBtn = document.getElementById('nextPageBtn');
             const textInput = document.getElementById('textInput');
             const xInput = document.getElementById('xInput');
             const yInput = document.getElementById('yInput');
@@ -764,7 +775,6 @@
                 startObjW = 0,
                 startObjH = 0,
                 startObjRot = 0;
-            let startObjData = null;
 
             // ─── Font helpers ───
             function getCanvasFont(fontName, size) {
@@ -885,6 +895,10 @@
                         return;
                     }
 
+                    // Update navigation button states
+                    prevPageBtn.disabled = (currentPageIndex === 0);
+                    nextPageBtn.disabled = (currentPageIndex >= pageCount - 1);
+
                     const page = await pdfjsDoc.getPage(currentPageIndex + 1);
                     const viewport = page.getViewport({ scale: scale });
                     canvas.width = viewport.width;
@@ -894,7 +908,10 @@
                     await renderTask.promise;
 
                     ctx.save();
-                    for (const obj of objects) {
+                    // Render ONLY objects assigned to the current active page
+                    const pageObjects = objects.filter(o => o.page === currentPageIndex);
+
+                    for (const obj of pageObjects) {
                         if (obj.type === 'text') {
                             const { width, height } = getTextDimensions(obj.lines[0], obj.font, obj.size);
                             const x = obj.x,
@@ -952,7 +969,6 @@
 
                                 // Draw resize handles (8 points)
                                 const handlePoints = [...corners, ...midpoints];
-                                const handleLabels = ['tl', 'tr', 'br', 'bl', 'tc', 'mr', 'bc', 'ml'];
                                 ctx.fillStyle = '#ffffff';
                                 ctx.strokeStyle = '#1a4b60';
                                 ctx.lineWidth = 1.5;
@@ -989,9 +1005,9 @@
                     ctx.restore();
 
                     updateObjectList();
-                    const count = objects.length;
+                    const pageCountActive = pageObjects.length;
                     const es = editingId !== null ? ' · Editing' : '';
-                    setStatus(`Page ${currentPageIndex+1} of ${pageCount} · ${count} object(s)${es}`);
+                    setStatus(`Page ${currentPageIndex+1} of ${pageCount} · ${pageCountActive} object(s) on page${es}`);
                 } catch (err) {
                     if (err.name !== 'RenderingCancelledException') {
                         console.error(err);
@@ -1050,6 +1066,7 @@
                     objects.push({
                         id: idCounter++,
                         type: 'text',
+                        page: currentPageIndex, // Track active page index
                         lines: [text],
                         x,
                         y,
@@ -1076,6 +1093,7 @@
                         objects.push({
                             id: idCounter++,
                             type: 'image',
+                            page: currentPageIndex, // Track active page index
                             data: dataUrl,
                             x: 50,
                             y: 50,
@@ -1168,6 +1186,7 @@
                     objects.push({
                         id: idCounter++,
                         type: 'signature',
+                        page: currentPageIndex, // Track active page index
                         data: dataUrl,
                         x: 50,
                         y: 50,
@@ -1249,12 +1268,13 @@
 
             // ─── Object List ───
             function updateObjectList() {
-                if (objects.length === 0) {
+                const pageObjects = objects.filter(o => o.page === currentPageIndex);
+                if (pageObjects.length === 0) {
                     objectListDiv.innerHTML = '<span class="empty-state">No objects</span>';
                     return;
                 }
                 let html = '';
-                for (const obj of objects) {
+                for (const obj of pageObjects) {
                     const isEditing = (obj.id === editingId);
                     let label = '',
                         dotColor = '#94a3b8';
@@ -1289,16 +1309,18 @@
                 if (!pdfDoc || !pdfFile) { alert('No PDF loaded.'); return; }
                 try {
                     const pages = pdfDoc.getPages();
-                    const firstPage = pages[0];
-                    const { height } = firstPage.getSize();
 
                     for (const obj of objects) {
+                        // Dynamically reference correct layout page
+                        const targetPage = pages[obj.page || 0] || pages[0];
+                        const { height } = targetPage.getSize();
+
                         if (obj.type === 'text') {
                             const { width, height: th } = getTextDimensions(obj.lines[0], obj.font, obj.size);
                             const pdfY = height - obj.y - th;
                             if (obj.cover && obj.bgColor) {
                                 const rgb = hexToRgb(obj.bgColor);
-                                firstPage.drawRectangle({
+                                targetPage.drawRectangle({
                                     x: obj.x,
                                     y: pdfY,
                                     width,
@@ -1309,7 +1331,7 @@
                             const trgb = hexToRgb(obj.color || '#e74c3c');
                             const font = await pdfDoc.embedFont(PDFLib.StandardFonts[obj.font] || PDFLib.StandardFonts
                                 .Helvetica);
-                            firstPage.drawText(obj.lines[0], {
+                            targetPage.drawText(obj.lines[0], {
                                 x: obj.x,
                                 y: pdfY + th,
                                 size: obj.size,
@@ -1328,10 +1350,8 @@
                             const w = obj.width || img.width;
                             const h = obj.height || img.height;
                             const pdfY = height - obj.y - h;
-                            const cx = obj.x + w / 2;
-                            const cy = pdfY + h / 2;
                             const rad = (obj.rotation || 0) * Math.PI / 180;
-                            firstPage.drawImage(img, {
+                            targetPage.drawImage(img, {
                                 x: obj.x,
                                 y: pdfY,
                                 width: w,
@@ -1386,8 +1406,10 @@
             }
 
             function findObjectAt(mx, my) {
-                for (let i = objects.length - 1; i >= 0; i--) {
-                    const obj = objects[i];
+                // Check only items that are bound to current active page
+                const activeObjects = objects.filter(o => o.page === currentPageIndex);
+                for (let i = activeObjects.length - 1; i >= 0; i--) {
+                    const obj = activeObjects[i];
                     if (obj.type === 'text') {
                         const { width, height } = getTextDimensions(obj.lines[0], obj.font, obj.size);
                         if (mx >= obj.x && mx <= obj.x + width && my >= obj.y && my <= obj.y + height) return obj;
@@ -1511,8 +1533,6 @@
                         } else {
                             newW = newH * aspect;
                         }
-                        // Adjust position to keep center fixed for corners
-                        // We'll just keep the center fixed for simplicity when shift is held
                         const cx = startObjX + startObjW / 2;
                         const cy = startObjY + startObjH / 2;
                         if (transformHandle === 'tl' || transformHandle === 'tr' || transformHandle === 'bl' ||
@@ -1614,6 +1634,23 @@
 
             // ─── Events ───
             fileInput.addEventListener('change', (e) => { if (e.target.files[0]) loadPDF(e.target.files[0]); });
+            
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPageIndex > 0) {
+                    currentPageIndex--;
+                    cancelEditing();
+                    renderOverlay();
+                }
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPageIndex < pageCount - 1) {
+                    currentPageIndex++;
+                    cancelEditing();
+                    renderOverlay();
+                }
+            });
+
             actionBtn.addEventListener('click', () => {
                 const obj = editingId !== null ? objects.find(o => o.id === editingId) : null;
                 if (obj && obj.type !== 'text') { cancelEditing(); return; }
