@@ -407,8 +407,6 @@
             cursor: grabbing;
         }
 
-        /* Bottom status bar removed – content moved to header-right */
-
         .object-list {
             margin-top: 8px;
             display: flex;
@@ -859,6 +857,7 @@
                 dragOffsetY = 0;
             let isRendering = false;
             let pendingRender = false;
+            let pdfLoaded = false; // track if a PDF is loaded
 
             let transformMode = null;
             let transformHandle = null;
@@ -914,10 +913,18 @@
                 statusText.textContent = msg;
                 statusBadge.textContent = good ? 'Ready' : 'Error';
                 headerDot.style.background = good ? '#27ae60' : '#e74c3c';
-                // Also update the border-left color of header-right to match
                 const headerRight = document.querySelector('.header-right');
                 if (headerRight) {
                     headerRight.style.borderLeftColor = good ? '#27ae60' : '#e74c3c';
+                }
+
+                // Hide dot and badge when PDF is loaded, show when not
+                if (pdfLoaded) {
+                    headerDot.style.display = 'none';
+                    statusBadge.style.display = 'none';
+                } else {
+                    headerDot.style.display = 'inline-block';
+                    statusBadge.style.display = 'inline';
                 }
             }
 
@@ -1222,6 +1229,7 @@
                 canvas.style.display = 'block';
                 changePdfBtn.style.display = 'inline-flex';
 
+                pdfLoaded = true; // mark as loaded
                 setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
                 await renderOverlay();
             }
@@ -1957,9 +1965,10 @@
             uploadPrompt.style.display = 'flex';
             canvas.style.display = 'none';
             changePdfBtn.style.display = 'none';
+            pdfLoaded = false; // ensure dot and badge are visible initially
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Transformable Media (status moved to header)');
+            console.log('✅ PDF Editor – Transformable Media (dot/badge hidden after load)');
         })();
     </script>
 </body>
