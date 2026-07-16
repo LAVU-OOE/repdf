@@ -29,8 +29,8 @@
             --border-color: #e9edf4;
             --text-main: #1e293b;
             --text-muted: #64748b;
-            --sidebar-expanded: 320px;
-            --sidebar-collapsed: 64px;
+            --sidebar-width: 320px;
+            --sidebar-collapsed-width: 64px;
         }
 
         body {
@@ -136,29 +136,30 @@
 
         /* ─── Main layout ─── */
         .main-grid {
-            display: grid;
-            grid-template-columns: var(--sidebar-expanded) 1fr;
-            gap: 32px;
-            align-items: start;
-            transition: grid-template-columns 0.3s ease;
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            min-height: 600px;
         }
 
-        .main-grid.sidebar-collapsed {
-            grid-template-columns: var(--sidebar-collapsed) 1fr;
-        }
-
-        /* ─── Sidebar ─── */
+        /* ─── Sidebar (overlay) ─── */
         .sidebar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background: white;
+            z-index: 10;
+            box-shadow: 2px 0 16px rgba(0, 0, 0, 0.06);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            position: sticky;
-            top: 24px;
-            max-height: calc(100vh - 140px);
+            gap: 8px;
+            padding: 12px 10px 12px 12px;
             overflow-y: auto;
             overflow-x: hidden;
-            padding-right: 4px;
-            transition: all 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(calc(-100% + var(--sidebar-collapsed-width)));
             scrollbar-width: thin;
         }
 
@@ -173,15 +174,21 @@
             border-radius: 2px;
         }
 
+        /* Expanded state */
+        .sidebar.expanded {
+            transform: translateX(0);
+        }
+
         /* Sidebar toggle header */
         .sidebar-toggle-wrap {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 4px 8px 8px 8px;
+            justify-content: flex-end;
+            padding: 4px 0 8px 0;
             border-bottom: 1px solid #eef2f5;
             margin-bottom: 4px;
             flex-shrink: 0;
+            gap: 8px;
         }
 
         .sidebar-toggle-wrap .toggle-label {
@@ -191,15 +198,13 @@
             letter-spacing: 0.8px;
             color: var(--text-muted);
             white-space: nowrap;
-            overflow: hidden;
-            transition: opacity 0.2s ease, width 0.3s ease;
+            transition: opacity 0.2s ease;
         }
 
-        .sidebar-collapsed .sidebar-toggle-wrap .toggle-label {
+        .sidebar.collapsed .sidebar-toggle-wrap .toggle-label {
             opacity: 0;
             width: 0;
-            margin: 0;
-            padding: 0;
+            overflow: hidden;
         }
 
         .sidebar-toggle {
@@ -228,7 +233,7 @@
             display: inline-block;
         }
 
-        .sidebar-collapsed .sidebar-toggle .chevron {
+        .sidebar.expanded .sidebar-toggle .chevron {
             transform: rotate(180deg);
         }
 
@@ -237,30 +242,29 @@
             background: #f8fafc;
             border-radius: 12px;
             border: 1px solid #eef2f5;
-            padding: 12px 14px;
-            transition: padding 0.3s ease;
+            padding: 10px 12px;
+            transition: background 0.2s ease;
             flex-shrink: 0;
-            position: relative;
-        }
-
-        .sidebar-collapsed .section {
-            padding: 10px 8px;
             display: flex;
             flex-direction: column;
-            align-items: center;
+        }
+
+        .sidebar.collapsed .section {
             background: transparent;
             border: none;
+            padding: 4px 0;
+            align-items: center;
         }
 
         .section-title-wrap {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             transition: margin 0.3s ease;
         }
 
-        .sidebar-collapsed .section-title-wrap {
+        .sidebar.collapsed .section-title-wrap {
             margin-bottom: 0;
             justify-content: center;
         }
@@ -271,6 +275,22 @@
             width: 28px;
             text-align: center;
             line-height: 1;
+        }
+
+        .sidebar.collapsed .section-icon {
+            font-size: 1.3rem;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: background 0.15s ease;
+            cursor: default;
+        }
+
+        .sidebar.collapsed .section-icon:hover {
+            background: #e2e8f0;
         }
 
         .section-title {
@@ -286,7 +306,7 @@
             overflow: hidden;
         }
 
-        .sidebar-collapsed .section-title {
+        .sidebar.collapsed .section-title {
             opacity: 0;
             width: 0;
             padding: 0;
@@ -301,36 +321,24 @@
             opacity: 1;
         }
 
-        .sidebar-collapsed .section-content {
+        .sidebar.collapsed .section-content {
             max-height: 0;
             opacity: 0;
             margin: 0;
             padding: 0;
         }
 
-        /* In collapsed state, show only icon with tooltip on hover */
-        .sidebar-collapsed .section {
+        /* Tooltip for collapsed state */
+        .section-tooltip {
+            display: none;
+        }
+
+        .sidebar.collapsed .section {
             position: relative;
         }
 
-        .sidebar-collapsed .section .section-icon {
-            font-size: 1.4rem;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            transition: background 0.15s ease;
-            cursor: pointer;
-        }
-
-        .sidebar-collapsed .section .section-icon:hover {
-            background: #e2e8f0;
-        }
-
-        /* Tooltip for collapsed state */
-        .sidebar-collapsed .section .section-tooltip {
+        .sidebar.collapsed .section-tooltip {
+            display: block;
             position: absolute;
             left: calc(100% + 12px);
             top: 50%;
@@ -349,7 +357,7 @@
             z-index: 100;
         }
 
-        .sidebar-collapsed .section .section-tooltip::before {
+        .sidebar.collapsed .section-tooltip::before {
             content: '';
             position: absolute;
             right: 100%;
@@ -359,14 +367,14 @@
             border-right-color: #1e293b;
         }
 
-        .sidebar-collapsed .section:hover .section-tooltip {
+        .sidebar.collapsed .section:hover .section-tooltip {
             opacity: 1;
             transform: translateY(-50%) translateX(0);
         }
 
-        /* ─── Field styles (inside sidebar) ─── */
+        /* ─── Field styles ─── */
         .field {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .field:last-child {
             margin-bottom: 0;
@@ -377,15 +385,15 @@
             font-size: 0.7rem;
             font-weight: 600;
             color: #475569;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .field-input {
             width: 100%;
-            padding: 6px 10px;
+            padding: 5px 8px;
             border: 1.5px solid #e2e8f0;
             border-radius: 6px;
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             font-family: 'Inter', sans-serif;
             background: white;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -399,15 +407,15 @@
         }
 
         .field-input-sm {
-            padding: 5px 8px;
-            font-size: 0.75rem;
+            padding: 4px 6px;
+            font-size: 0.7rem;
         }
 
         .field-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 6px;
+            margin-bottom: 6px;
         }
         .field-row:last-child {
             margin-bottom: 0;
@@ -416,13 +424,13 @@
         .field-row-3 {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 6px;
-            margin-bottom: 8px;
+            gap: 5px;
+            margin-bottom: 6px;
         }
 
         .field-color {
             width: 100%;
-            height: 30px;
+            height: 28px;
             padding: 2px;
             border-radius: 6px;
             cursor: pointer;
@@ -433,16 +441,16 @@
         .field-check {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
+            gap: 5px;
+            font-size: 0.7rem;
             font-weight: 550;
             color: #334155;
             cursor: pointer;
         }
 
         .field-check input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             accent-color: var(--primary);
             cursor: pointer;
         }
@@ -450,15 +458,15 @@
         .btn-group {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 5px;
             margin-top: 2px;
         }
 
         .btn {
-            padding: 6px 14px;
+            padding: 5px 10px;
             border: none;
             border-radius: 6px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             font-family: 'Inter', sans-serif;
             cursor: pointer;
@@ -516,8 +524,8 @@
         }
 
         .btn-sm {
-            padding: 4px 10px;
-            font-size: 0.7rem;
+            padding: 3px 8px;
+            font-size: 0.65rem;
         }
 
         .btn-block {
@@ -530,18 +538,18 @@
 
         /* ─── Object list ─── */
         .object-list {
-            margin-top: 6px;
+            margin-top: 4px;
             display: flex;
             flex-wrap: wrap;
             gap: 4px;
-            min-height: 24px;
+            min-height: 20px;
         }
 
         .object-tag {
             background: #f1f5f9;
-            padding: 3px 10px;
-            border-radius: 16px;
-            font-size: 0.68rem;
+            padding: 2px 8px;
+            border-radius: 14px;
+            font-size: 0.65rem;
             display: inline-flex;
             align-items: center;
             gap: 4px;
@@ -574,7 +582,7 @@
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 10px;
+            font-size: 9px;
             padding: 0 2px;
             line-height: 1;
             opacity: 0.5;
@@ -596,13 +604,14 @@
 
         .empty-state {
             color: var(--text-muted);
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 400;
-            padding: 4px 0;
+            padding: 2px 0;
         }
 
         /* ─── Canvas area ─── */
         .canvas-wrapper {
+            width: 100%;
             background: #edf2f7;
             border-radius: 16px;
             border: 1px dashed #cbd5e1;
@@ -614,6 +623,17 @@
             position: relative;
             padding: 32px;
             overflow: hidden;
+            transition: padding 0.3s ease;
+        }
+
+        /* When sidebar is expanded, add left padding to avoid content being hidden behind it */
+        .sidebar.expanded ~ .canvas-wrapper {
+            padding-left: calc(var(--sidebar-width) + 16px);
+        }
+
+        /* But we can't use sibling selector because sidebar is before canvas-wrapper? Actually sidebar is before canvas-wrapper in DOM? In our HTML, sidebar is before canvas-wrapper inside main-grid. So we can use .sidebar.expanded + .canvas-wrapper? No, there is no direct sibling because canvas-wrapper is not immediately after sidebar (no element between). So we can use .sidebar.expanded ~ .canvas-wrapper. That works. */
+        .sidebar.expanded ~ .canvas-wrapper {
+            padding-left: calc(var(--sidebar-width) + 16px);
         }
 
         .upload-prompt {
@@ -791,67 +811,15 @@
         }
 
         /* ─── Responsive ─── */
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: var(--sidebar-expanded) 1fr;
-                gap: 20px;
-            }
-        }
-
         @media (max-width: 820px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }
-            .main-grid.sidebar-collapsed {
-                grid-template-columns: 1fr;
-            }
             .sidebar {
-                position: static;
-                max-height: none;
-                overflow-y: visible;
-                padding-right: 0;
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 8px;
+                width: 280px;
+                --sidebar-width: 280px;
+                --sidebar-collapsed-width: 56px;
+                transform: translateX(calc(-100% + var(--sidebar-collapsed-width)));
             }
-            .sidebar-toggle-wrap {
-                width: 100%;
-                border-bottom: 1px solid #eef2f5;
-                padding-bottom: 8px;
-            }
-            .section {
-                flex: 1;
-                min-width: 140px;
-            }
-            .sidebar-collapsed .section {
-                min-width: auto;
-                padding: 8px 12px;
-                background: #f8fafc;
-                border: 1px solid #eef2f5;
-                border-radius: 12px;
-                flex-direction: row;
-                gap: 8px;
-            }
-            .sidebar-collapsed .section .section-content {
-                max-height: 800px;
-                opacity: 1;
-                display: none;
-            }
-            .sidebar-collapsed .section .section-title {
-                opacity: 1;
-                width: auto;
-                padding-left: 8px;
-                border-left: 3px solid var(--primary);
-                font-size: 0.6rem;
-            }
-            .sidebar-collapsed .section .section-tooltip {
-                display: none;
-            }
-            .sidebar-collapsed .section .section-icon {
-                font-size: 1.1rem;
-                width: 24px;
-                height: 24px;
+            .sidebar.expanded ~ .canvas-wrapper {
+                padding-left: calc(var(--sidebar-width) + 12px);
             }
             .canvas-wrapper {
                 padding: 16px;
@@ -886,13 +854,22 @@
                 font-size: 0.78rem;
                 padding: 6px 12px;
             }
+            .sidebar {
+                width: 260px;
+                --sidebar-width: 260px;
+                --sidebar-collapsed-width: 48px;
+                transform: translateX(calc(-100% + var(--sidebar-collapsed-width)));
+            }
+            .sidebar.expanded ~ .canvas-wrapper {
+                padding-left: calc(var(--sidebar-width) + 8px);
+            }
             .field-row {
                 grid-template-columns: 1fr;
-                gap: 6px;
+                gap: 4px;
             }
             .field-row-3 {
                 grid-template-columns: 1fr;
-                gap: 6px;
+                gap: 4px;
             }
             .btn-group {
                 flex-direction: column;
@@ -913,13 +890,6 @@
             }
             .pdf-view {
                 gap: 6px;
-            }
-            .sidebar-collapsed .section {
-                min-width: auto;
-                padding: 6px 10px;
-            }
-            .sidebar-collapsed .section .section-title {
-                font-size: 0.5rem;
             }
         }
     </style>
@@ -943,13 +913,13 @@
         </header>
 
         <div class="main-grid" id="mainGrid">
-            <!-- Sidebar -->
-            <aside class="sidebar" id="sidebar">
+            <!-- Sidebar (overlay) -->
+            <aside class="sidebar collapsed" id="sidebar">
                 <!-- Toggle -->
                 <div class="sidebar-toggle-wrap">
                     <span class="toggle-label">Menu</span>
-                    <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
-                        <span class="chevron">◀</span>
+                    <button class="sidebar-toggle" id="sidebarToggle" title="Expand sidebar">
+                        <span class="chevron">▶</span>
                     </button>
                 </div>
 
@@ -1080,8 +1050,8 @@
                 </div>
             </aside>
 
-            <!-- Canvas -->
-            <main class="canvas-wrapper">
+            <!-- Canvas area -->
+            <main class="canvas-wrapper" id="canvasWrapper">
                 <div id="uploadPrompt" class="upload-prompt">
                     <div class="upload-icon">📄</div>
                     <h2>Upload a PDF</h2>
@@ -1136,6 +1106,7 @@
             const mainGrid = document.getElementById('mainGrid');
             const sidebar = document.getElementById('sidebar');
             const sidebarToggle = document.getElementById('sidebarToggle');
+            const canvasWrapper = document.getElementById('canvasWrapper');
             const fileInput = document.getElementById('fileInput');
             const uploadPrompt = document.getElementById('uploadPrompt');
             const uploadButton = document.getElementById('uploadButton');
@@ -1167,12 +1138,12 @@
             const objectListDiv = document.getElementById('objectList');
 
             // ─── Sidebar toggle ───
-            let isSidebarCollapsed = false;
+            let isSidebarCollapsed = true; // default collapsed
 
             function toggleSidebar() {
                 isSidebarCollapsed = !isSidebarCollapsed;
-                mainGrid.classList.toggle('sidebar-collapsed', isSidebarCollapsed);
                 sidebar.classList.toggle('collapsed', isSidebarCollapsed);
+                sidebar.classList.toggle('expanded', !isSidebarCollapsed);
                 const chevron = sidebarToggle.querySelector('.chevron');
                 if (chevron) {
                     chevron.textContent = isSidebarCollapsed ? '▶' : '◀';
@@ -1186,11 +1157,12 @@
 
             sidebarToggle.addEventListener('click', toggleSidebar);
 
-            // Restore preference
+            // Restore preference (but default is collapsed, so only restore if saved as expanded)
             try {
                 const saved = localStorage.getItem('pdfEditorSidebarCollapsed');
-                if (saved === 'true') {
-                    isSidebarCollapsed = false; // toggle will invert
+                if (saved === 'false') {
+                    // User previously had it expanded, so expand now
+                    isSidebarCollapsed = true; // toggle will invert
                     toggleSidebar();
                 }
             } catch (_) {}
@@ -2425,7 +2397,7 @@
             pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Expandable sidebar menu');
+            console.log('✅ PDF Editor – Expandable sidebar overlay (collapsed by default)');
         })();
     </script>
 </body>
