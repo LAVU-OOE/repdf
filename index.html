@@ -402,9 +402,47 @@
             border-radius: 4px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             cursor: default;
+            touch-action: none; /* prevent browser gestures */
         }
         #pdfCanvas.dragging {
             cursor: grabbing;
+        }
+
+        /* Page navigation (below canvas) */
+        .page-nav {
+            display: none; /* hidden until PDF loaded */
+            margin-top: 20px;
+            align-items: center;
+            gap: 16px;
+            background: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .page-nav .nav-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: 20px;
+            color: var(--text-main);
+            transition: background 0.15s;
+        }
+        .page-nav .nav-btn:hover {
+            background: #f1f5f9;
+        }
+        .page-nav .nav-btn:disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .page-nav .page-indicator {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            min-width: 80px;
+            text-align: center;
         }
 
         .object-list {
@@ -586,6 +624,10 @@
                 padding: 16px;
                 min-height: 400px;
             }
+            .page-nav {
+                margin-top: 16px;
+                padding: 6px 14px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -627,6 +669,10 @@
             .sig-canvas-wrap {
                 height: 200px;
             }
+            .page-nav .nav-btn {
+                font-size: 1rem;
+                padding: 2px 8px;
+            }
         }
     </style>
 </head>
@@ -650,16 +696,10 @@
 
         <div class="main-grid">
             <aside class="sidebar">
-                <!-- Document section: page navigation + change PDF -->
+                <!-- Document section: only Change PDF button now -->
                 <div class="section">
                     <div class="section-title">Document</div>
-                    <div class="field-row" style="margin-top: 0;">
-                        <button id="prevPageBtn" class="btn btn-secondary btn-sm btn-block" disabled>◀ Prev</button>
-                        <button id="nextPageBtn" class="btn btn-secondary btn-sm btn-block" disabled>Next ▶</button>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <button id="changePdfBtn" class="btn btn-primary btn-sm btn-block" style="display:none;">📂 Change PDF</button>
-                    </div>
+                    <button id="changePdfBtn" class="btn btn-primary btn-sm btn-block" style="display:none;">📂 Change PDF</button>
                 </div>
 
                 <!-- Text controls -->
@@ -763,8 +803,15 @@
                     <input type="file" id="fileInput" accept=".pdf" style="display:none;" />
                 </div>
 
-                <!-- Canvas (hidden until PDF loaded) -->
+                <!-- Canvas -->
                 <canvas id="pdfCanvas" willReadFrequently="true"></canvas>
+
+                <!-- Page navigation (hidden until PDF loaded) -->
+                <div class="page-nav" id="pageNav">
+                    <button id="prevPageBtn" class="nav-btn" disabled>◀</button>
+                    <span class="page-indicator" id="pageIndicator">1 / 1</span>
+                    <button id="nextPageBtn" class="nav-btn" disabled>▶</button>
+                </div>
             </main>
         </div>
     </div>
@@ -811,6 +858,8 @@
             const ctx = canvas.getContext('2d');
             const prevPageBtn = document.getElementById('prevPageBtn');
             const nextPageBtn = document.getElementById('nextPageBtn');
+            const pageIndicator = document.getElementById('pageIndicator');
+            const pageNav = document.getElementById('pageNav');
             const textInput = document.getElementById('textInput');
             const xInput = document.getElementById('xInput');
             const yInput = document.getElementById('yInput');
@@ -857,7 +906,7 @@
                 dragOffsetY = 0;
             let isRendering = false;
             let pendingRender = false;
-            let pdfLoaded = false; // track if a PDF is loaded
+            let pdfLoaded = false;
 
             let transformMode = null;
             let transformHandle = null;
@@ -869,6 +918,12 @@
                 startObjH = 0,
                 startObjRot = 0;
             let startObjSize = 24;
+
+            // ─── Touch swipe state ───
+            let touchStartX = 0,
+                touchStartY = 0;
+            let touchMoved = false;
+            let ignoreSwipe = false; // set if dragging/transform active
 
             // ─── Font helpers ───
             function getCanvasFont(fontName, size) {
@@ -917,8 +972,6 @@
                 if (headerRight) {
                     headerRight.style.borderLeftColor = good ? '#27ae60' : '#e74c3c';
                 }
-
-                // Hide dot and badge when PDF is loaded, show when not
                 if (pdfLoaded) {
                     headerDot.style.display = 'none';
                     statusBadge.style.display = 'none';
@@ -1117,8 +1170,10 @@
                         return;
                     }
 
+                    // Update navigation buttons and indicator
                     prevPageBtn.disabled = (currentPageIndex === 0);
                     nextPageBtn.disabled = (currentPageIndex >= pageCount - 1);
+                    pageIndicator.textContent = `${currentPageIndex+1} / ${pageCount}`;
 
                     const page = await pdfjsDoc.getPage(currentPageIndex + 1);
                     const viewport = page.getViewport({ scale: scale });
@@ -1224,12 +1279,13 @@
                 cancelBtn.style.display = 'none';
                 deleteSelectedBtn.style.display = 'none';
 
-                // Switch UI: hide upload prompt, show canvas, show change PDF button
+                // Switch UI: hide upload prompt, show canvas and page navigation
                 uploadPrompt.style.display = 'none';
                 canvas.style.display = 'block';
+                pageNav.style.display = 'flex';
                 changePdfBtn.style.display = 'inline-flex';
 
-                pdfLoaded = true; // mark as loaded
+                pdfLoaded = true;
                 setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
                 await renderOverlay();
             }
@@ -1859,6 +1915,55 @@
                 }
             }
 
+            // ─── Touch swipe events ───
+            function onTouchStart(e) {
+                if (!pdfjsDoc) return;
+                // If we are in a drag or transform, ignore swipe
+                if (draggingItem !== null || transformMode !== null) {
+                    ignoreSwipe = true;
+                    return;
+                }
+                ignoreSwipe = false;
+                const t = e.touches[0];
+                touchStartX = t.clientX;
+                touchStartY = t.clientY;
+                touchMoved = false;
+            }
+
+            function onTouchMove(e) {
+                if (!pdfjsDoc || ignoreSwipe) return;
+                const t = e.touches[0];
+                const deltaX = t.clientX - touchStartX;
+                const deltaY = t.clientY - touchStartY;
+                if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                    touchMoved = true;
+                    e.preventDefault(); // prevent scroll
+                }
+            }
+
+            function onTouchEnd(e) {
+                if (!pdfjsDoc || ignoreSwipe || !touchMoved) return;
+                const t = e.changedTouches[0];
+                const deltaX = t.clientX - touchStartX;
+                if (Math.abs(deltaX) > 50) {
+                    if (deltaX < 0) {
+                        // swipe left -> next page
+                        if (currentPageIndex < pageCount - 1) {
+                            currentPageIndex++;
+                            cancelEditing();
+                            renderOverlay();
+                        }
+                    } else {
+                        // swipe right -> prev page
+                        if (currentPageIndex > 0) {
+                            currentPageIndex--;
+                            cancelEditing();
+                            renderOverlay();
+                        }
+                    }
+                }
+            }
+
             // ─── Event Bindings ───
 
             // Upload triggers
@@ -1872,7 +1977,7 @@
                 }
             });
 
-            // Page navigation
+            // Page navigation buttons (now in canvas-wrapper)
             prevPageBtn.addEventListener('click', () => {
                 if (currentPageIndex > 0) {
                     currentPageIndex--;
@@ -1936,39 +2041,197 @@
                 sigCanvas.dispatchEvent(new MouseEvent('mouseup', {}));
             }, { passive: false });
 
-            // Canvas interactions
+            // Canvas interactions (mouse)
             canvas.addEventListener('mousedown', onMouseDown);
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
             canvas.addEventListener('dblclick', onDoubleClick);
             window.addEventListener('keydown', onKeyDown);
 
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
+            // Touch swipe on canvas
+            canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+            canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+
+            // Also handle touch events for drag/transform (already handled by canvas mousedown/move/up via touch simulation?)
+            // We already have touch handlers for canvas that dispatch mouse events, which may conflict with swipe.
+            // To avoid conflict, we'll disable the touch->mouse simulation when swipe is detected?
+            // Actually we have both touchstart listeners: one for swipe, and one that dispatches mouse event.
+            // The mouse event dispatcher is added via canvas.addEventListener('touchstart', ...) in the existing code.
+            // We need to modify that: we should not dispatch mouse events if the touch is a swipe (i.e., touchMoved).
+            // We'll keep the existing touch handlers but we'll add a check inside them.
+            // We'll override the existing touch handlers by removing them and adding our own with conditions.
+            // Actually the existing touch handlers are at the bottom: 
+            // canvas.addEventListener('touchstart', ...) and window.addEventListener('touchmove', ...) and touchend.
+            // We'll comment those out and use our own that check for swipe.
+            // We'll keep the original touch handlers? They were for dragging/transform. We need to keep them but they might conflict.
+            // Better: we combine them: in our touchstart, if we detect a potential drag (touch on object), we should not start swipe.
+            // But we can detect if touch started on an object by checking coordinates. We'll implement a combined approach:
+            // In touchstart, we check if there is an object at the touch point. If yes, we set ignoreSwipe = true and let the mouse event simulation handle drag.
+            // If no object, we allow swipe.
+            // But we also need to handle the case where the user taps on an object to select it, which should not trigger swipe.
+            // So we'll modify our onTouchStart to detect object hit.
+            // We'll also need to get canvas coordinates from touch.
+
+            // Override the original touch handlers by redefining them after we set our own.
+            // We'll just remove the old ones by not adding them. We'll rewrite the touch handling.
+
+            // We'll replace the old touch handlers with our combined logic.
+            // We'll keep the mouse simulation for drag but we'll add a check to ignore swipe.
+
+            // Let's redefine the touch handlers completely.
+
+            // Remove old listeners (we'll just not add them, but they were added at the bottom of the original code.
+            // In the original code, there are:
+            // canvas.addEventListener('touchstart', ...)
+            // window.addEventListener('touchmove', ...)
+            // window.addEventListener('touchend', ...)
+            // We'll remove them by not executing that part. Since we are rewriting, we'll just not include them.
+
+            // We'll now add our own touch handlers that handle both selection/drag and swipe.
+
+            // Our onTouchStart will check if there's an object at the touch point.
+            // If yes, we simulate a mousedown for drag/selection, and set ignoreSwipe = true.
+            // If no, we start swipe detection.
+
+            // We'll also need to handle the case where touch starts on a handle (resize/rotate). We'll detect that similarly.
+
+            // We'll create new functions:
+            let touchStartedOnObject = false;
+
+            function handleTouchStart(e) {
+                if (!pdfjsDoc) return;
+                const rect = canvas.getBoundingClientRect();
                 const t = e.touches[0];
-                canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY }));
-            }, { passive: false });
-            window.addEventListener('touchmove', (e) => {
-                if (draggingItem !== null || transformMode) {
-                    e.preventDefault();
+                const canvasX = (t.clientX - rect.left) * (canvas.width / rect.width);
+                const canvasY = (t.clientY - rect.top) * (canvas.height / rect.height);
+
+                // Check if touch on object or handle
+                let hitObj = findObjectAt(canvasX, canvasY);
+                let handle = null;
+                if (editingId !== null) {
+                    const selectedObj = objects.find(o => o.id === editingId);
+                    if (selectedObj) {
+                        if (selectedObj.type === 'text') {
+                            const dims = getTextDimensions(selectedObj.lines[0], selectedObj.font, selectedObj.size);
+                            selectedObj._computedWidth = dims.width;
+                            selectedObj._computedHeight = dims.height;
+                            selectedObj._handles = null;
+                            drawTransformHandles(selectedObj, dims.width, dims.height);
+                        } else {
+                            selectedObj._handles = null;
+                            drawTransformHandles(selectedObj, selectedObj.width, selectedObj.height);
+                        }
+                        handle = getHandleAt(canvasX, canvasY, selectedObj);
+                    }
+                }
+
+                if (hitObj || handle) {
+                    // Simulate mouse down for drag/selection
+                    touchStartedOnObject = true;
+                    ignoreSwipe = true;
+                    // Dispatch mouse event
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: t.clientX,
+                        clientY: t.clientY,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    canvas.dispatchEvent(mouseEvent);
+                } else {
+                    touchStartedOnObject = false;
+                    ignoreSwipe = false;
+                    // Start swipe detection
+                    touchStartX = t.clientX;
+                    touchStartY = t.clientY;
+                    touchMoved = false;
+                }
+                e.preventDefault(); // prevent default touch behavior
+            }
+
+            function handleTouchMove(e) {
+                if (!pdfjsDoc) return;
+                if (touchStartedOnObject) {
+                    // Dispatch mouse move for drag/transform
                     const t = e.touches[0];
-                    window.dispatchEvent(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY }));
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: t.clientX,
+                        clientY: t.clientY,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    window.dispatchEvent(mouseEvent);
+                    e.preventDefault();
+                } else if (!ignoreSwipe) {
+                    const t = e.touches[0];
+                    const deltaX = t.clientX - touchStartX;
+                    const deltaY = t.clientY - touchStartY;
+                    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                        touchMoved = true;
+                        e.preventDefault();
+                    }
+                } else {
+                    e.preventDefault();
                 }
-            }, { passive: false });
-            window.addEventListener('touchend', () => {
-                if (draggingItem !== null || transformMode) {
-                    window.dispatchEvent(new MouseEvent('mouseup', {}));
+            }
+
+            function handleTouchEnd(e) {
+                if (!pdfjsDoc) return;
+                if (touchStartedOnObject) {
+                    // Dispatch mouse up
+                    const mouseEvent = new MouseEvent('mouseup', {
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    window.dispatchEvent(mouseEvent);
+                    touchStartedOnObject = false;
+                    ignoreSwipe = false;
+                } else if (!ignoreSwipe && touchMoved) {
+                    const t = e.changedTouches[0];
+                    const deltaX = t.clientX - touchStartX;
+                    if (Math.abs(deltaX) > 50) {
+                        if (deltaX < 0) {
+                            if (currentPageIndex < pageCount - 1) {
+                                currentPageIndex++;
+                                cancelEditing();
+                                renderOverlay();
+                            }
+                        } else {
+                            if (currentPageIndex > 0) {
+                                currentPageIndex--;
+                                cancelEditing();
+                                renderOverlay();
+                            }
+                        }
+                    }
                 }
+                e.preventDefault();
+            }
+
+            // Register touch handlers
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // We also need to handle touchcancel to reset state
+            canvas.addEventListener('touchcancel', (e) => {
+                touchStartedOnObject = false;
+                ignoreSwipe = false;
+                // Dispatch mouse up to cancel drag
+                const mouseEvent = new MouseEvent('mouseup', { bubbles: true, cancelable: true });
+                window.dispatchEvent(mouseEvent);
+                e.preventDefault();
             }, { passive: false });
 
-            // Initial state: no PDF, show upload prompt, hide canvas, hide changePdfBtn
+            // ─── Initial state ───
             uploadPrompt.style.display = 'flex';
             canvas.style.display = 'none';
+            pageNav.style.display = 'none';
             changePdfBtn.style.display = 'none';
-            pdfLoaded = false; // ensure dot and badge are visible initially
+            pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Transformable Media (dot/badge hidden after load)');
+            console.log('✅ PDF Editor – Transformable Media (page nav in canvas, swipe support)');
         })();
     </script>
 </body>
