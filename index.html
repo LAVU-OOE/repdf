@@ -30,7 +30,7 @@
             --text-main: #1e293b;
             --text-muted: #64748b;
             --sidebar-width: 320px;
-            --sidebar-collapsed-width: 64px;
+            --sidebar-collapsed-width: 56px;
         }
 
         body {
@@ -64,6 +64,8 @@
             border-bottom: 2px solid #eef2f5;
             flex-wrap: wrap;
             gap: 12px;
+            position: relative;
+            z-index: 2;
         }
 
         .header-left {
@@ -138,11 +140,27 @@
         .main-grid {
             position: relative;
             width: 100%;
-            overflow: hidden;
             min-height: 600px;
         }
 
-        /* ─── Sidebar (overlay) ─── */
+        /* ─── Canvas wrapper (always full width) ─── */
+        .canvas-wrapper {
+            width: 100%;
+            background: #edf2f7;
+            border-radius: 16px;
+            border: 1px dashed #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 600px;
+            position: relative;
+            padding: 32px;
+            overflow: hidden;
+            transition: none;
+        }
+
+        /* ─── Sidebar (absolute overlay) ─── */
         .sidebar {
             position: absolute;
             left: 0;
@@ -150,8 +168,8 @@
             bottom: 0;
             width: var(--sidebar-width);
             background: white;
-            z-index: 10;
-            box-shadow: 2px 0 16px rgba(0, 0, 0, 0.06);
+            z-index: 20;
+            box-shadow: 2px 0 24px rgba(0, 0, 0, 0.08);
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -161,6 +179,7 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateX(calc(-100% + var(--sidebar-collapsed-width)));
             scrollbar-width: thin;
+            border-radius: 0 12px 12px 0;
         }
 
         .sidebar::-webkit-scrollbar {
@@ -174,9 +193,10 @@
             border-radius: 2px;
         }
 
-        /* Expanded state */
+        /* Expanded state - slides OVER the canvas */
         .sidebar.expanded {
             transform: translateX(0);
+            box-shadow: 4px 0 32px rgba(0, 0, 0, 0.12);
         }
 
         /* Sidebar toggle header */
@@ -189,6 +209,7 @@
             margin-bottom: 4px;
             flex-shrink: 0;
             gap: 8px;
+            min-height: 40px;
         }
 
         .sidebar-toggle-wrap .toggle-label {
@@ -201,7 +222,7 @@
             transition: opacity 0.2s ease;
         }
 
-        .sidebar.collapsed .sidebar-toggle-wrap .toggle-label {
+        .sidebar:not(.expanded) .sidebar-toggle-wrap .toggle-label {
             opacity: 0;
             width: 0;
             overflow: hidden;
@@ -249,7 +270,7 @@
             flex-direction: column;
         }
 
-        .sidebar.collapsed .section {
+        .sidebar:not(.expanded) .section {
             background: transparent;
             border: none;
             padding: 4px 0;
@@ -264,7 +285,7 @@
             transition: margin 0.3s ease;
         }
 
-        .sidebar.collapsed .section-title-wrap {
+        .sidebar:not(.expanded) .section-title-wrap {
             margin-bottom: 0;
             justify-content: center;
         }
@@ -277,7 +298,7 @@
             line-height: 1;
         }
 
-        .sidebar.collapsed .section-icon {
+        .sidebar:not(.expanded) .section-icon {
             font-size: 1.3rem;
             width: 36px;
             height: 36px;
@@ -289,7 +310,7 @@
             cursor: default;
         }
 
-        .sidebar.collapsed .section-icon:hover {
+        .sidebar:not(.expanded) .section-icon:hover {
             background: #e2e8f0;
         }
 
@@ -306,7 +327,7 @@
             overflow: hidden;
         }
 
-        .sidebar.collapsed .section-title {
+        .sidebar:not(.expanded) .section-title {
             opacity: 0;
             width: 0;
             padding: 0;
@@ -321,7 +342,7 @@
             opacity: 1;
         }
 
-        .sidebar.collapsed .section-content {
+        .sidebar:not(.expanded) .section-content {
             max-height: 0;
             opacity: 0;
             margin: 0;
@@ -333,11 +354,11 @@
             display: none;
         }
 
-        .sidebar.collapsed .section {
+        .sidebar:not(.expanded) .section {
             position: relative;
         }
 
-        .sidebar.collapsed .section-tooltip {
+        .sidebar:not(.expanded) .section-tooltip {
             display: block;
             position: absolute;
             left: calc(100% + 12px);
@@ -357,7 +378,7 @@
             z-index: 100;
         }
 
-        .sidebar.collapsed .section-tooltip::before {
+        .sidebar:not(.expanded) .section-tooltip::before {
             content: '';
             position: absolute;
             right: 100%;
@@ -367,7 +388,7 @@
             border-right-color: #1e293b;
         }
 
-        .sidebar.collapsed .section:hover .section-tooltip {
+        .sidebar:not(.expanded) .section:hover .section-tooltip {
             opacity: 1;
             transform: translateY(-50%) translateX(0);
         }
@@ -610,32 +631,6 @@
         }
 
         /* ─── Canvas area ─── */
-        .canvas-wrapper {
-            width: 100%;
-            background: #edf2f7;
-            border-radius: 16px;
-            border: 1px dashed #cbd5e1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 600px;
-            position: relative;
-            padding: 32px;
-            overflow: hidden;
-            transition: padding 0.3s ease;
-        }
-
-        /* When sidebar is expanded, add left padding to avoid content being hidden behind it */
-        .sidebar.expanded ~ .canvas-wrapper {
-            padding-left: calc(var(--sidebar-width) + 16px);
-        }
-
-        /* But we can't use sibling selector because sidebar is before canvas-wrapper? Actually sidebar is before canvas-wrapper in DOM? In our HTML, sidebar is before canvas-wrapper inside main-grid. So we can use .sidebar.expanded + .canvas-wrapper? No, there is no direct sibling because canvas-wrapper is not immediately after sidebar (no element between). So we can use .sidebar.expanded ~ .canvas-wrapper. That works. */
-        .sidebar.expanded ~ .canvas-wrapper {
-            padding-left: calc(var(--sidebar-width) + 16px);
-        }
-
         .upload-prompt {
             display: flex;
             flex-direction: column;
@@ -815,11 +810,8 @@
             .sidebar {
                 width: 280px;
                 --sidebar-width: 280px;
-                --sidebar-collapsed-width: 56px;
+                --sidebar-collapsed-width: 48px;
                 transform: translateX(calc(-100% + var(--sidebar-collapsed-width)));
-            }
-            .sidebar.expanded ~ .canvas-wrapper {
-                padding-left: calc(var(--sidebar-width) + 12px);
             }
             .canvas-wrapper {
                 padding: 16px;
@@ -857,11 +849,9 @@
             .sidebar {
                 width: 260px;
                 --sidebar-width: 260px;
-                --sidebar-collapsed-width: 48px;
+                --sidebar-collapsed-width: 40px;
                 transform: translateX(calc(-100% + var(--sidebar-collapsed-width)));
-            }
-            .sidebar.expanded ~ .canvas-wrapper {
-                padding-left: calc(var(--sidebar-width) + 8px);
+                padding: 8px 6px 8px 8px;
             }
             .field-row {
                 grid-template-columns: 1fr;
@@ -913,8 +903,8 @@
         </header>
 
         <div class="main-grid" id="mainGrid">
-            <!-- Sidebar (overlay) -->
-            <aside class="sidebar collapsed" id="sidebar">
+            <!-- Sidebar (absolute overlay) -->
+            <aside class="sidebar" id="sidebar">
                 <!-- Toggle -->
                 <div class="sidebar-toggle-wrap">
                     <span class="toggle-label">Menu</span>
@@ -1050,7 +1040,7 @@
                 </div>
             </aside>
 
-            <!-- Canvas area -->
+            <!-- Canvas area (full width) -->
             <main class="canvas-wrapper" id="canvasWrapper">
                 <div id="uploadPrompt" class="upload-prompt">
                     <div class="upload-icon">📄</div>
@@ -1137,36 +1127,6 @@
             const headerDot = document.getElementById('headerDot');
             const objectListDiv = document.getElementById('objectList');
 
-            // ─── Sidebar toggle ───
-            let isSidebarCollapsed = true; // default collapsed
-
-            function toggleSidebar() {
-                isSidebarCollapsed = !isSidebarCollapsed;
-                sidebar.classList.toggle('collapsed', isSidebarCollapsed);
-                sidebar.classList.toggle('expanded', !isSidebarCollapsed);
-                const chevron = sidebarToggle.querySelector('.chevron');
-                if (chevron) {
-                    chevron.textContent = isSidebarCollapsed ? '▶' : '◀';
-                }
-                sidebarToggle.title = isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
-                // Save preference
-                try {
-                    localStorage.setItem('pdfEditorSidebarCollapsed', isSidebarCollapsed ? 'true' : 'false');
-                } catch (_) {}
-            }
-
-            sidebarToggle.addEventListener('click', toggleSidebar);
-
-            // Restore preference (but default is collapsed, so only restore if saved as expanded)
-            try {
-                const saved = localStorage.getItem('pdfEditorSidebarCollapsed');
-                if (saved === 'false') {
-                    // User previously had it expanded, so expand now
-                    isSidebarCollapsed = true; // toggle will invert
-                    toggleSidebar();
-                }
-            } catch (_) {}
-
             // ─── Signature modal ───
             const modal = document.getElementById('signatureModal');
             const sigCanvas = document.getElementById('signatureCanvas');
@@ -1209,6 +1169,34 @@
                 touchStartY = 0;
             let touchMoved = false;
             let ignoreSwipe = false;
+
+            // ─── Sidebar toggle ───
+            let isSidebarCollapsed = true; // default collapsed
+
+            function toggleSidebar() {
+                isSidebarCollapsed = !isSidebarCollapsed;
+                sidebar.classList.toggle('expanded', !isSidebarCollapsed);
+                const chevron = sidebarToggle.querySelector('.chevron');
+                if (chevron) {
+                    chevron.textContent = isSidebarCollapsed ? '▶' : '◀';
+                }
+                sidebarToggle.title = isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
+                // Save preference
+                try {
+                    localStorage.setItem('pdfEditorSidebarCollapsed', isSidebarCollapsed ? 'true' : 'false');
+                } catch (_) {}
+            }
+
+            sidebarToggle.addEventListener('click', toggleSidebar);
+
+            // Restore preference (default is collapsed)
+            try {
+                const saved = localStorage.getItem('pdfEditorSidebarCollapsed');
+                if (saved === 'false') {
+                    isSidebarCollapsed = true;
+                    toggleSidebar();
+                }
+            } catch (_) {}
 
             // ─── Font helpers ───
             function getCanvasFont(fontName, size) {
@@ -2397,7 +2385,7 @@
             pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Expandable sidebar overlay (collapsed by default)');
+            console.log('✅ PDF Editor – Menu slides OVER the canvas (overlay)');
         })();
     </script>
 </body>
