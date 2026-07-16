@@ -936,16 +936,6 @@
                             <label class="field-label" for="textInput">Content</label>
                             <input type="text" id="textInput" value="Hello World" class="field-input field-input-sm" />
                         </div>
-                        <div class="field-row">
-                            <div class="field">
-                                <label class="field-label" for="xInput">X</label>
-                                <input type="number" id="xInput" value="50" step="1" class="field-input field-input-sm" />
-                            </div>
-                            <div class="field">
-                                <label class="field-label" for="yInput">Y</label>
-                                <input type="number" id="yInput" value="50" step="1" class="field-input field-input-sm" />
-                            </div>
-                        </div>
                         <div class="field-row-3">
                             <div class="field">
                                 <label class="field-label" for="sizeInput">Size</label>
@@ -1107,8 +1097,6 @@
             const prevPageBtn = document.getElementById('prevPageBtn');
             const nextPageBtn = document.getElementById('nextPageBtn');
             const textInput = document.getElementById('textInput');
-            const xInput = document.getElementById('xInput');
-            const yInput = document.getElementById('yInput');
             const sizeInput = document.getElementById('sizeInput');
             const fontSelect = document.getElementById('fontSelect');
             const colorInput = document.getElementById('colorInput');
@@ -1171,7 +1159,7 @@
             let ignoreSwipe = false;
 
             // ─── Sidebar toggle ───
-            let isSidebarCollapsed = true; // default collapsed
+            let isSidebarCollapsed = true;
 
             function toggleSidebar() {
                 isSidebarCollapsed = !isSidebarCollapsed;
@@ -1181,7 +1169,6 @@
                     chevron.textContent = isSidebarCollapsed ? '▶' : '◀';
                 }
                 sidebarToggle.title = isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
-                // Save preference
                 try {
                     localStorage.setItem('pdfEditorSidebarCollapsed', isSidebarCollapsed ? 'true' : 'false');
                 } catch (_) {}
@@ -1189,7 +1176,6 @@
 
             sidebarToggle.addEventListener('click', toggleSidebar);
 
-            // Restore preference (default is collapsed)
             try {
                 const saved = localStorage.getItem('pdfEditorSidebarCollapsed');
                 if (saved === 'false') {
@@ -1564,8 +1550,6 @@
                 if (!pdfDoc) { alert('Please upload a PDF first.'); return; }
 
                 const text = textInput.value || 'Hello';
-                const x = parseFloat(xInput.value) || 50;
-                const y = parseFloat(yInput.value) || 50;
                 const size = parseFloat(sizeInput.value) || 24;
                 const font = fontSelect.value;
                 const color = colorInput.value;
@@ -1577,10 +1561,9 @@
                     if (obj && obj.type === 'text') {
                         const oldPage = obj.page;
                         const oldRot = obj.rotation || 0;
+                        // Keep existing x,y when editing
                         Object.assign(obj, {
                             lines: [text],
-                            x,
-                            y,
                             size,
                             font,
                             color,
@@ -1597,8 +1580,8 @@
                         type: 'text',
                         page: currentPageIndex,
                         lines: [text],
-                        x,
-                        y,
+                        x: 50,
+                        y: 50,
                         size,
                         font,
                         color,
@@ -1745,8 +1728,6 @@
                 editingId = id;
                 if (obj.type === 'text') {
                     textInput.value = obj.lines[0];
-                    xInput.value = obj.x;
-                    yInput.value = obj.y;
                     sizeInput.value = obj.size;
                     fontSelect.value = obj.font || 'Helvetica';
                     colorInput.value = obj.color || '#e74c3c';
@@ -2385,7 +2366,7 @@
             pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Menu slides OVER the canvas (overlay)');
+            console.log('✅ PDF Editor – X/Y inputs removed from Text section');
         })();
     </script>
 </body>
