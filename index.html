@@ -930,6 +930,7 @@
                 <span class="section-title">Document</span>
             </div>
             <div class="btn-group" style="flex-direction: column; gap: 6px;">
+                <button id="choosePdfBtn" class="btn btn-primary btn-sm btn-block">📂 Choose PDF</button>
                 <button id="changePdfBtn" class="btn btn-primary btn-sm btn-block" style="display:none;">📂 Change PDF</button>
                 <button id="saveBtn" class="btn btn-success btn-sm btn-block" style="display:none;">💾 Save PDF</button>
             </div>
@@ -1064,6 +1065,7 @@
             const fileInput = document.getElementById('fileInput');
             const uploadPrompt = document.getElementById('uploadPrompt');
             const uploadButton = document.getElementById('uploadButton');
+            const choosePdfBtn = document.getElementById('choosePdfBtn');
             const changePdfBtn = document.getElementById('changePdfBtn');
             const saveBtn = document.getElementById('saveBtn');
             const pdfView = document.getElementById('pdfView');
@@ -1524,6 +1526,7 @@
 
                 uploadPrompt.style.display = 'none';
                 pdfView.classList.add('active');
+                choosePdfBtn.style.display = 'none';
                 changePdfBtn.style.display = 'flex';
                 saveBtn.style.display = 'flex';
                 // Close menu after loading
@@ -2264,6 +2267,7 @@
             // ─── Event Bindings ───
 
             uploadButton.addEventListener('click', () => fileInput.click());
+            choosePdfBtn.addEventListener('click', () => fileInput.click());
             changePdfBtn.addEventListener('click', () => fileInput.click());
 
             fileInput.addEventListener('change', (e) => {
@@ -2353,12 +2357,13 @@
             // ─── Initial state ───
             uploadPrompt.style.display = 'flex';
             pdfView.classList.remove('active');
+            choosePdfBtn.style.display = 'flex';
             changePdfBtn.style.display = 'none';
             saveBtn.style.display = 'none';
             pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Save button moved to Document section');
+            console.log('✅ PDF Editor – Choose PDF button added to Document section');
         })();
     </script>
 </body>
