@@ -688,6 +688,131 @@
             padding: 2px 0;
         }
 
+        /* ─── Text Modal ─── */
+        .text-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .text-modal-overlay.active {
+            display: flex;
+        }
+
+        .text-modal {
+            background: #0f172a;
+            border-radius: 16px;
+            padding: 28px 32px 32px 32px;
+            max-width: 480px;
+            width: 92%;
+            max-height: 90vh;
+            overflow-y: auto;
+            color: #f1f5f9;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid #1e293b;
+        }
+
+        .text-modal::-webkit-scrollbar {
+            width: 4px;
+        }
+        .text-modal::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .text-modal::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 2px;
+        }
+
+        .text-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 16px;
+        }
+
+        .text-modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .text-modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            line-height: 1;
+        }
+
+        .text-modal-close:hover {
+            background: #1e293b;
+            color: #f1f5f9;
+        }
+
+        .text-modal .field-label {
+            color: #94a3b8;
+        }
+
+        .text-modal .field-input,
+        .text-modal .field-select,
+        .text-modal .field-color {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .text-modal .field-input:focus,
+        .text-modal .field-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26, 75, 96, 0.2);
+        }
+
+        .text-modal .field-check {
+            color: #94a3b8;
+        }
+
+        .text-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #1e293b;
+        }
+
+        .text-modal .btn {
+            padding: 6px 16px;
+            font-size: 0.75rem;
+        }
+
+        .text-modal .btn-primary {
+            background: var(--primary);
+        }
+        .text-modal .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+        .text-modal .btn-secondary {
+            background: #334155;
+            color: #f1f5f9;
+        }
+        .text-modal .btn-secondary:hover {
+            background: #475569;
+        }
+
         /* ─── Modal ─── */
         .modal-overlay {
             display: none;
@@ -810,6 +935,10 @@
                 width: 320px;
                 padding: 20px 16px;
             }
+            .text-modal {
+                padding: 24px 20px;
+                max-width: 440px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -835,6 +964,12 @@
                 max-width: 100vw;
                 padding: 16px 12px;
                 border-radius: 0;
+            }
+            .text-modal {
+                padding: 20px 16px;
+                max-width: 100%;
+                width: 96%;
+                border-radius: 12px;
             }
             .field-row {
                 grid-template-columns: 1fr;
@@ -936,59 +1071,6 @@
             </div>
         </div>
 
-        <!-- Text -->
-        <div class="section">
-            <div class="section-title-wrap">
-                <span class="section-icon">✏️</span>
-                <span class="section-title">Text</span>
-            </div>
-            <div class="field">
-                <label class="field-label" for="textInput">Content</label>
-                <input type="text" id="textInput" value="Hello World" class="field-input field-input-sm" />
-            </div>
-            <div class="field-row-3">
-                <div class="field">
-                    <label class="field-label" for="sizeInput">Size</label>
-                    <input type="number" id="sizeInput" value="24" step="1" class="field-input field-input-sm" />
-                </div>
-                <div class="field">
-                    <label class="field-label" for="fontSelect">Font</label>
-                    <select id="fontSelect" class="field-select">
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Helvetica-Bold">Helvetica Bold</option>
-                        <option value="Helvetica-Oblique">Helvetica Oblique</option>
-                        <option value="Helvetica-BoldOblique">Helvetica BoldOblique</option>
-                        <option value="Times-Roman">Times</option>
-                        <option value="Times-Bold">Times Bold</option>
-                        <option value="Times-Italic">Times Italic</option>
-                        <option value="Times-BoldItalic">Times BoldItalic</option>
-                        <option value="Courier">Courier</option>
-                        <option value="Courier-Bold">Courier Bold</option>
-                        <option value="Courier-Oblique">Courier Oblique</option>
-                        <option value="Courier-BoldOblique">Courier BoldOblique</option>
-                        <option value="Symbol">Symbol</option>
-                        <option value="ZapfDingbats">ZapfDingbats</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label class="field-label" for="colorInput">Color</label>
-                    <input type="color" id="colorInput" value="#e74c3c" class="field-color" />
-                </div>
-            </div>
-            <div class="field-row" style="align-items:center;">
-                <div class="field">
-                    <label class="field-label" for="bgColorInput">Cover Fill</label>
-                    <input type="color" id="bgColorInput" value="#ffffff" class="field-color" />
-                </div>
-                <div class="field" style="display:flex; align-items:center; padding-top:2px;">
-                    <label class="field-check">
-                        <input type="checkbox" id="coverToggle" checked />
-                        Cover
-                    </label>
-                </div>
-            </div>
-        </div>
-
         <!-- Insert -->
         <div class="section">
             <div class="section-title-wrap">
@@ -996,6 +1078,7 @@
                 <span class="section-title">Insert</span>
             </div>
             <div class="btn-group">
+                <button id="textModalBtn" class="btn btn-primary btn-sm">✏️ Text</button>
                 <button id="addImageBtn" class="btn btn-primary btn-sm">🖼️ Image</button>
                 <button id="drawSignatureBtn" class="btn btn-warning btn-sm">✍️ Signature</button>
             </div>
@@ -1027,6 +1110,65 @@
             <div id="objectList" class="object-list"><span class="empty-state">No objects</span></div>
         </div>
     </aside>
+
+    <!-- ─── Text Modal ─── -->
+    <div class="text-modal-overlay" id="textModalOverlay">
+        <div class="text-modal">
+            <div class="text-modal-header">
+                <span class="text-modal-title">✏️ Add Text</span>
+                <button class="text-modal-close" id="textModalClose">✕</button>
+            </div>
+            <div class="field">
+                <label class="field-label" for="textInputModal">Content</label>
+                <input type="text" id="textInputModal" value="Hello World" class="field-input field-input-sm" />
+            </div>
+            <div class="field-row-3">
+                <div class="field">
+                    <label class="field-label" for="sizeInputModal">Size</label>
+                    <input type="number" id="sizeInputModal" value="24" step="1" class="field-input field-input-sm" />
+                </div>
+                <div class="field">
+                    <label class="field-label" for="fontSelectModal">Font</label>
+                    <select id="fontSelectModal" class="field-select">
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Helvetica-Bold">Helvetica Bold</option>
+                        <option value="Helvetica-Oblique">Helvetica Oblique</option>
+                        <option value="Helvetica-BoldOblique">Helvetica BoldOblique</option>
+                        <option value="Times-Roman">Times</option>
+                        <option value="Times-Bold">Times Bold</option>
+                        <option value="Times-Italic">Times Italic</option>
+                        <option value="Times-BoldItalic">Times BoldItalic</option>
+                        <option value="Courier">Courier</option>
+                        <option value="Courier-Bold">Courier Bold</option>
+                        <option value="Courier-Oblique">Courier Oblique</option>
+                        <option value="Courier-BoldOblique">Courier BoldOblique</option>
+                        <option value="Symbol">Symbol</option>
+                        <option value="ZapfDingbats">ZapfDingbats</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label" for="colorInputModal">Color</label>
+                    <input type="color" id="colorInputModal" value="#e74c3c" class="field-color" />
+                </div>
+            </div>
+            <div class="field-row" style="align-items:center;">
+                <div class="field">
+                    <label class="field-label" for="bgColorInputModal">Cover Fill</label>
+                    <input type="color" id="bgColorInputModal" value="#ffffff" class="field-color" />
+                </div>
+                <div class="field" style="display:flex; align-items:center; padding-top:2px;">
+                    <label class="field-check">
+                        <input type="checkbox" id="coverToggleModal" checked />
+                        Cover
+                    </label>
+                </div>
+            </div>
+            <div class="text-modal-footer">
+                <button id="textModalCancel" class="btn btn-secondary">Cancel</button>
+                <button id="textModalAdd" class="btn btn-primary">➕ Add</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ─── Signature Modal ─── -->
     <div class="modal-overlay" id="signatureModal">
@@ -1073,12 +1215,6 @@
             const ctx = canvas.getContext('2d');
             const prevPageBtn = document.getElementById('prevPageBtn');
             const nextPageBtn = document.getElementById('nextPageBtn');
-            const textInput = document.getElementById('textInput');
-            const sizeInput = document.getElementById('sizeInput');
-            const fontSelect = document.getElementById('fontSelect');
-            const colorInput = document.getElementById('colorInput');
-            const bgColorInput = document.getElementById('bgColorInput');
-            const coverToggle = document.getElementById('coverToggle');
             const actionBtn = document.getElementById('actionBtn');
             const cancelBtn = document.getElementById('cancelBtn');
             const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
@@ -1090,6 +1226,19 @@
             const statusBadge = document.getElementById('statusBadge');
             const headerDot = document.getElementById('headerDot');
             const objectListDiv = document.getElementById('objectList');
+
+            // ─── Text Modal refs ───
+            const textModalOverlay = document.getElementById('textModalOverlay');
+            const textModalClose = document.getElementById('textModalClose');
+            const textModalCancel = document.getElementById('textModalCancel');
+            const textModalAdd = document.getElementById('textModalAdd');
+            const textModalBtn = document.getElementById('textModalBtn');
+            const textInputModal = document.getElementById('textInputModal');
+            const sizeInputModal = document.getElementById('sizeInputModal');
+            const fontSelectModal = document.getElementById('fontSelectModal');
+            const colorInputModal = document.getElementById('colorInputModal');
+            const bgColorInputModal = document.getElementById('bgColorInputModal');
+            const coverToggleModal = document.getElementById('coverToggleModal');
 
             // ─── Menu Toggle ───
             const menuToggle = document.getElementById('menuToggle');
@@ -1122,11 +1271,123 @@
             menuClose.addEventListener('click', closeMenu);
             menuOverlay.addEventListener('click', closeMenu);
 
-            // Close on Escape
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && menuSidebar.classList.contains('open')) {
                     closeMenu();
                 }
+            });
+
+            // ─── Text Modal ───
+            let textModalEditingId = null;
+
+            function openTextModal(editingId) {
+                textModalEditingId = editingId || null;
+                if (textModalEditingId !== null) {
+                    // Editing existing text
+                    const obj = objects.find(o => o.id === textModalEditingId);
+                    if (obj && obj.type === 'text') {
+                        textInputModal.value = obj.lines[0];
+                        sizeInputModal.value = obj.size;
+                        fontSelectModal.value = obj.font || 'Helvetica';
+                        colorInputModal.value = obj.color || '#e74c3c';
+                        bgColorInputModal.value = obj.bgColor || '#ffffff';
+                        coverToggleModal.checked = obj.cover !== undefined ? obj.cover : true;
+                        document.querySelector('.text-modal-title').textContent = '✏️ Edit Text';
+                        textModalAdd.textContent = '🔄 Update';
+                    } else {
+                        textModalEditingId = null;
+                        resetTextModal();
+                    }
+                } else {
+                    resetTextModal();
+                    document.querySelector('.text-modal-title').textContent = '✏️ Add Text';
+                    textModalAdd.textContent = '➕ Add';
+                }
+                textModalOverlay.classList.add('active');
+                closeMenu();
+            }
+
+            function resetTextModal() {
+                textInputModal.value = 'Hello World';
+                sizeInputModal.value = 24;
+                fontSelectModal.value = 'Helvetica';
+                colorInputModal.value = '#e74c3c';
+                bgColorInputModal.value = '#ffffff';
+                coverToggleModal.checked = true;
+            }
+
+            function closeTextModal() {
+                textModalOverlay.classList.remove('active');
+                textModalEditingId = null;
+            }
+
+            function handleTextModalAdd() {
+                const text = textInputModal.value || 'Hello';
+                const size = parseFloat(sizeInputModal.value) || 24;
+                const font = fontSelectModal.value;
+                const color = colorInputModal.value;
+                const bgColor = coverToggleModal.checked ? bgColorInputModal.value : null;
+                const cover = coverToggleModal.checked;
+
+                if (textModalEditingId !== null) {
+                    // Update existing text
+                    const obj = objects.find(o => o.id === textModalEditingId);
+                    if (obj && obj.type === 'text') {
+                        const oldPage = obj.page;
+                        const oldRot = obj.rotation || 0;
+                        Object.assign(obj, {
+                            lines: [text],
+                            size,
+                            font,
+                            color,
+                            bgColor,
+                            cover,
+                            page: oldPage,
+                            rotation: oldRot
+                        });
+                    }
+                    cancelEditing();
+                } else {
+                    // Add new text
+                    objects.push({
+                        id: idCounter++,
+                        type: 'text',
+                        page: currentPageIndex,
+                        lines: [text],
+                        x: 50,
+                        y: 50,
+                        size,
+                        font,
+                        color,
+                        bgColor,
+                        cover,
+                        rotation: 0
+                    });
+                }
+                closeTextModal();
+                renderOverlay();
+            }
+
+            textModalBtn.addEventListener('click', () => openTextModal(null));
+            textModalClose.addEventListener('click', closeTextModal);
+            textModalCancel.addEventListener('click', closeTextModal);
+            textModalAdd.addEventListener('click', handleTextModalAdd);
+
+            // Close text modal on overlay click
+            textModalOverlay.addEventListener('click', (e) => {
+                if (e.target === textModalOverlay) closeTextModal();
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && textModalOverlay.classList.contains('active')) {
+                    closeTextModal();
+                }
+            });
+
+            // Enter key in text input triggers add
+            textInputModal.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleTextModalAdd();
             });
 
             // ─── Signature modal ───
@@ -1529,7 +1790,6 @@
                 choosePdfBtn.style.display = 'none';
                 changePdfBtn.style.display = 'flex';
                 saveBtn.style.display = 'flex';
-                // Close menu after loading
                 closeMenu();
 
                 pdfLoaded = true;
@@ -1537,16 +1797,16 @@
                 await renderOverlay();
             }
 
-            // ─── Text save ───
-            function saveText() {
+            // ─── Save text (used by Actions "Add" button) ───
+            function saveTextFromModal() {
                 if (!pdfDoc) { alert('Please upload a PDF first.'); return; }
 
-                const text = textInput.value || 'Hello';
-                const size = parseFloat(sizeInput.value) || 24;
-                const font = fontSelect.value;
-                const color = colorInput.value;
-                const bgColor = coverToggle.checked ? bgColorInput.value : null;
-                const cover = coverToggle.checked;
+                const text = textInputModal.value || 'Hello';
+                const size = parseFloat(sizeInputModal.value) || 24;
+                const font = fontSelectModal.value;
+                const color = colorInputModal.value;
+                const bgColor = coverToggleModal.checked ? bgColorInputModal.value : null;
+                const cover = coverToggleModal.checked;
 
                 if (editingId !== null) {
                     const obj = objects.find(o => o.id === editingId);
@@ -1582,7 +1842,6 @@
                     });
                 }
                 renderOverlay();
-                // Auto-close menu after adding? Maybe not, user might want to add more. We'll keep it open.
             }
 
             // ─── Add Image ───
@@ -1708,7 +1967,6 @@
             function openModal() {
                 modal.classList.add('active');
                 setTimeout(initSigCanvas, 50);
-                // Close the main menu if open
                 closeMenu();
             }
 
@@ -1721,13 +1979,12 @@
                 if (!obj) return;
                 editingId = id;
                 if (obj.type === 'text') {
-                    textInput.value = obj.lines[0];
-                    sizeInput.value = obj.size;
-                    fontSelect.value = obj.font || 'Helvetica';
-                    colorInput.value = obj.color || '#e74c3c';
-                    bgColorInput.value = obj.bgColor || '#ffffff';
-                    coverToggle.checked = obj.cover !== undefined ? obj.cover : true;
+                    // Open text modal in edit mode
+                    openTextModal(id);
+                    // The modal handles the rest
+                    // But we need to set the action button text for consistency
                     actionBtn.textContent = '🔄 Update';
+                    return;
                 } else {
                     setStatus(`Editing ${obj.type} – drag to reposition, corners to resize, top to rotate`, true);
                     actionBtn.textContent = '🔄 Update';
@@ -1736,6 +1993,9 @@
                 deleteSelectedBtn.style.display = 'inline-flex';
                 renderOverlay();
             }
+
+            // Override startEditing for text to use modal
+            // The function above handles it
 
             function cancelEditing() {
                 editingId = null;
@@ -2293,16 +2553,26 @@
                 }
             });
 
+            // Actions "Add" button - uses text modal values
             actionBtn.addEventListener('click', () => {
-                const obj = editingId !== null ? objects.find(o => o.id === editingId) : null;
-                if (obj && obj.type !== 'text') { cancelEditing(); return; }
-                saveText();
+                // Check if there's an editing object that's not text
+                if (editingId !== null) {
+                    const obj = objects.find(o => o.id === editingId);
+                    if (obj && obj.type !== 'text') {
+                        cancelEditing();
+                        return;
+                    }
+                }
+                // For text, use the modal values
+                saveTextFromModal();
+                // If we were editing, cancel editing state
+                if (editingId !== null) cancelEditing();
             });
+
             cancelBtn.addEventListener('click', cancelEditing);
             deleteSelectedBtn.addEventListener('click', deleteSelected);
             clearBtn.addEventListener('click', clearAll);
             saveBtn.addEventListener('click', savePDF);
-            textInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') saveText(); });
 
             addImageBtn.addEventListener('click', () => imageFileInput.click());
             imageFileInput.addEventListener('change', (e) => {
@@ -2363,7 +2633,7 @@
             pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Choose PDF button added to Document section');
+            console.log('✅ PDF Editor – Text controls moved to modal');
         })();
     </script>
 </body>
