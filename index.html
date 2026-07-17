@@ -1365,6 +1365,7 @@
                     });
                 }
                 closeTextModal();
+                hasUnsavedChanges = true;
                 renderOverlay();
             }
 
@@ -1413,9 +1414,13 @@
             let draggingItem = null;
             let dragOffsetX = 0,
                 dragOffsetY = 0;
+            let dragStartX = 0,
+                dragStartY = 0;
             let isRendering = false;
             let pendingRender = false;
             let pdfLoaded = false;
+
+            let hasUnsavedChanges = false;
 
             let transformMode = null;
             let transformHandle = null;
@@ -1793,6 +1798,7 @@
                 closeMenu();
 
                 pdfLoaded = true;
+                hasUnsavedChanges = false;
                 setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
                 await renderOverlay();
             }
@@ -1841,6 +1847,7 @@
                         rotation: 0
                     });
                 }
+                hasUnsavedChanges = true;
                 renderOverlay();
             }
 
@@ -1865,6 +1872,7 @@
                             height: h,
                             rotation: 0
                         });
+                        hasUnsavedChanges = true;
                         renderOverlay();
                     };
                     img.src = dataUrl;
@@ -1958,6 +1966,7 @@
                         height: h,
                         rotation: 0
                     });
+                    hasUnsavedChanges = true;
                     renderOverlay();
                     closeModal();
                 };
@@ -2017,6 +2026,7 @@
                 objects = objects.filter(o => o.id !== id);
                 if (editingId === id) cancelEditing();
                 if (draggingItem === id) draggingItem = null;
+                hasUnsavedChanges = true;
                 renderOverlay();
             }
 
@@ -2028,6 +2038,7 @@
                 editingId = null;
                 draggingItem = null;
                 cancelEditing();
+                hasUnsavedChanges = true;
                 renderOverlay();
             }
 
@@ -2136,6 +2147,7 @@
                     link.click();
                     document.body.removeChild(link);
                     URL.revokeObjectURL(link.href);
+                    hasUnsavedChanges = false;
                     setStatus('✅ PDF saved successfully!');
                 } catch (e) {
                     console.error(e);
@@ -2229,6 +2241,8 @@
                     draggingItem = hitObj.id;
                     dragOffsetX = x - hitObj.x;
                     dragOffsetY = y - hitObj.y;
+                    dragStartX = hitObj.x;
+                    dragStartY = hitObj.y;
                     canvas.classList.add('dragging');
                     renderOverlay();
                     e.preventDefault();
@@ -2387,17 +2401,45 @@
             }
 
             function onMouseUp(e) {
+                let changed = false;
+
                 if (transformMode) {
+                    const obj = objects.find(o => o.id === editingId);
+                    if (obj) {
+                        let currentW, currentH;
+                        if (obj.type === 'text') {
+                            const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
+                            currentW = dims.width;
+                            currentH = dims.height;
+                        } else {
+                            currentW = obj.width;
+                            currentH = obj.height;
+                        }
+                        if (currentW !== startObjW || currentH !== startObjH || obj.rotation !== startObjRot) {
+                            changed = true;
+                        }
+                    }
                     transformMode = null;
                     transformHandle = null;
                     renderOverlay();
                     e.preventDefault();
                 }
+
                 if (draggingItem !== null) {
+                    const obj = objects.find(o => o.id === draggingItem);
+                    if (obj) {
+                        if (obj.x !== dragStartX || obj.y !== dragStartY) {
+                            changed = true;
+                        }
+                    }
                     draggingItem = null;
                     canvas.classList.remove('dragging');
                     renderOverlay();
                     e.preventDefault();
+                }
+
+                if (changed) {
+                    hasUnsavedChanges = true;
                 }
             }
 
@@ -2524,6 +2566,14 @@
                 e.preventDefault();
             }
 
+            // ─── Before Unload Warning ───
+            window.addEventListener('beforeunload', (e) => {
+                if (hasUnsavedChanges) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
             // ─── Event Bindings ───
 
             uploadButton.addEventListener('click', () => fileInput.click());
@@ -2631,9 +2681,10 @@
             changePdfBtn.style.display = 'none';
             saveBtn.style.display = 'none';
             pdfLoaded = false;
+            hasUnsavedChanges = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Text controls moved to modal');
+            console.log('✅ PDF Editor – Refresh warning implemented');
         })();
     </script>
 </body>
