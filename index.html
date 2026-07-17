@@ -397,6 +397,18 @@
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .section.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .section.disabled .section-icon,
+        .section.disabled .section-title {
+            color: #64748b;
         }
 
         .section-title-wrap {
@@ -1072,7 +1084,7 @@
         </div>
 
         <!-- Insert -->
-        <div class="section">
+        <div class="section" id="insertSection">
             <div class="section-title-wrap">
                 <span class="section-icon">➕</span>
                 <span class="section-title">Insert</span>
@@ -1086,7 +1098,7 @@
         </div>
 
         <!-- Objects -->
-        <div class="section" style="flex:1;">
+        <div class="section" style="flex:1;" id="objectsSection">
             <div class="section-title-wrap">
                 <span class="section-icon">📋</span>
                 <span class="section-title">Objects</span>
@@ -1298,7 +1310,6 @@
             function closeTextModal() {
                 textModalOverlay.classList.remove('active');
                 textModalEditingId = null;
-                // Deselect any object after editing
                 if (editingId !== null) deselectObject();
             }
 
@@ -1744,33 +1755,61 @@
                 }
             }
 
+            // ─── UI State ───
+            function updateUIState() {
+                const insertSection = document.getElementById('insertSection');
+                const objectsSection = document.getElementById('objectsSection');
+
+                if (pdfLoaded) {
+                    uploadPrompt.style.display = 'none';
+                    pdfView.classList.add('active');
+                    insertSection.classList.remove('disabled');
+                    objectsSection.classList.remove('disabled');
+                    choosePdfBtn.style.display = 'none';
+                    changePdfBtn.style.display = 'flex';
+                    saveBtn.style.display = 'flex';
+                } else {
+                    uploadPrompt.style.display = 'flex';
+                    pdfView.classList.remove('active');
+                    insertSection.classList.add('disabled');
+                    objectsSection.classList.add('disabled');
+                    choosePdfBtn.style.display = 'flex';
+                    changePdfBtn.style.display = 'none';
+                    saveBtn.style.display = 'none';
+                }
+            }
+
             // ─── Load PDF ───
             async function loadPDF(file) {
-                pdfFile = file;
-                objects = [];
-                idCounter = 0;
-                editingId = null;
-                draggingItem = null;
-                const arrayBuffer = await file.arrayBuffer();
+                try {
+                    pdfFile = file;
+                    objects = [];
+                    idCounter = 0;
+                    editingId = null;
+                    draggingItem = null;
+                    const arrayBuffer = await file.arrayBuffer();
 
-                pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-                pageCount = pdfDoc.getPageCount();
+                    pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                    pageCount = pdfDoc.getPageCount();
 
-                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-                pdfjsDoc = await loadingTask.promise;
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
+                    pdfjsDoc = await loadingTask.promise;
 
-                currentPageIndex = 0;
-                uploadPrompt.style.display = 'none';
-                pdfView.classList.add('active');
-                choosePdfBtn.style.display = 'none';
-                changePdfBtn.style.display = 'flex';
-                saveBtn.style.display = 'flex';
-                closeMenu();
+                    currentPageIndex = 0;
+                    closeMenu();
 
-                pdfLoaded = true;
-                hasUnsavedChanges = false;
-                setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
-                await renderOverlay();
+                    pdfLoaded = true;
+                    hasUnsavedChanges = false;
+                    updateUIState();
+                    setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
+                    await renderOverlay();
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to load PDF: ' + err.message);
+                    pdfLoaded = false;
+                    updateUIState();
+                    setStatus('Failed to load PDF', false);
+                }
             }
 
             // ─── Add Image ───
@@ -1871,8 +1910,8 @@
             }
 
             function confirmSignature() {
-                const dataUrl = sigCanvas.toDataURL('image/png');
                 if (!pdfDoc) { alert('Please upload a PDF first.'); return; }
+                const dataUrl = sigCanvas.toDataURL('image/png');
                 const img = new Image();
                 img.onload = function() {
                     const w = Math.min(img.width, 200);
@@ -1910,7 +1949,6 @@
                 if (!obj) return;
                 editingId = id;
                 if (obj.type === 'text') {
-                    // Open text modal in edit mode
                     openTextModal(id);
                     return;
                 } else {
@@ -2549,16 +2587,12 @@
             }, { passive: false });
 
             // ─── Initial state ───
-            uploadPrompt.style.display = 'flex';
-            pdfView.classList.remove('active');
-            choosePdfBtn.style.display = 'flex';
-            changePdfBtn.style.display = 'none';
-            saveBtn.style.display = 'none';
             pdfLoaded = false;
             hasUnsavedChanges = false;
+            updateUIState();
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Actions section removed');
+            console.log('✅ PDF Editor – Insert & Objects sections grayed out until PDF is loaded');
         })();
     </script>
 </body>
