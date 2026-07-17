@@ -929,7 +929,10 @@
                 <span class="section-icon">📄</span>
                 <span class="section-title">Document</span>
             </div>
-            <button id="changePdfBtn" class="btn btn-primary btn-sm btn-block" style="display:none;">📂 Change PDF</button>
+            <div class="btn-group" style="flex-direction: column; gap: 6px;">
+                <button id="changePdfBtn" class="btn btn-primary btn-sm btn-block" style="display:none;">📂 Change PDF</button>
+                <button id="saveBtn" class="btn btn-success btn-sm btn-block" style="display:none;">💾 Save PDF</button>
+            </div>
         </div>
 
         <!-- Text -->
@@ -1011,7 +1014,6 @@
             </div>
             <div class="btn-group" style="margin-top:4px;">
                 <button id="clearBtn" class="btn btn-danger btn-sm">🗑️ Clear All</button>
-                <button id="saveBtn" class="btn btn-success btn-sm">💾 Save PDF</button>
             </div>
         </div>
 
@@ -1063,6 +1065,7 @@
             const uploadPrompt = document.getElementById('uploadPrompt');
             const uploadButton = document.getElementById('uploadButton');
             const changePdfBtn = document.getElementById('changePdfBtn');
+            const saveBtn = document.getElementById('saveBtn');
             const pdfView = document.getElementById('pdfView');
             const canvas = document.getElementById('pdfCanvas');
             const ctx = canvas.getContext('2d');
@@ -1078,7 +1081,6 @@
             const cancelBtn = document.getElementById('cancelBtn');
             const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
             const clearBtn = document.getElementById('clearBtn');
-            const saveBtn = document.getElementById('saveBtn');
             const addImageBtn = document.getElementById('addImageBtn');
             const imageFileInput = document.getElementById('imageFileInput');
             const drawSignatureBtn = document.getElementById('drawSignatureBtn');
@@ -1522,7 +1524,8 @@
 
                 uploadPrompt.style.display = 'none';
                 pdfView.classList.add('active');
-                changePdfBtn.style.display = 'inline-flex';
+                changePdfBtn.style.display = 'flex';
+                saveBtn.style.display = 'flex';
                 // Close menu after loading
                 closeMenu();
 
@@ -2351,10 +2354,11 @@
             uploadPrompt.style.display = 'flex';
             pdfView.classList.remove('active');
             changePdfBtn.style.display = 'none';
+            saveBtn.style.display = 'none';
             pdfLoaded = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Right slide-in menu (Colorlib style)');
+            console.log('✅ PDF Editor – Save button moved to Document section');
         })();
     </script>
 </body>
