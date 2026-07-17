@@ -1085,22 +1085,6 @@
             <input type="file" id="imageFileInput" accept="image/*" />
         </div>
 
-        <!-- Actions -->
-        <div class="section">
-            <div class="section-title-wrap">
-                <span class="section-icon">⚡</span>
-                <span class="section-title">Actions</span>
-            </div>
-            <div class="btn-group">
-                <button id="actionBtn" class="btn btn-primary btn-sm">➕ Add</button>
-                <button id="cancelBtn" class="btn btn-secondary btn-sm" style="display:none;">✖</button>
-                <button id="deleteSelectedBtn" class="btn btn-warning btn-sm" style="display:none;">🗑️</button>
-            </div>
-            <div class="btn-group" style="margin-top:4px;">
-                <button id="clearBtn" class="btn btn-danger btn-sm">🗑️ Clear All</button>
-            </div>
-        </div>
-
         <!-- Objects -->
         <div class="section" style="flex:1;">
             <div class="section-title-wrap">
@@ -1215,10 +1199,6 @@
             const ctx = canvas.getContext('2d');
             const prevPageBtn = document.getElementById('prevPageBtn');
             const nextPageBtn = document.getElementById('nextPageBtn');
-            const actionBtn = document.getElementById('actionBtn');
-            const cancelBtn = document.getElementById('cancelBtn');
-            const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
-            const clearBtn = document.getElementById('clearBtn');
             const addImageBtn = document.getElementById('addImageBtn');
             const imageFileInput = document.getElementById('imageFileInput');
             const drawSignatureBtn = document.getElementById('drawSignatureBtn');
@@ -1283,7 +1263,6 @@
             function openTextModal(editingId) {
                 textModalEditingId = editingId || null;
                 if (textModalEditingId !== null) {
-                    // Editing existing text
                     const obj = objects.find(o => o.id === textModalEditingId);
                     if (obj && obj.type === 'text') {
                         textInputModal.value = obj.lines[0];
@@ -1319,6 +1298,8 @@
             function closeTextModal() {
                 textModalOverlay.classList.remove('active');
                 textModalEditingId = null;
+                // Deselect any object after editing
+                if (editingId !== null) deselectObject();
             }
 
             function handleTextModalAdd() {
@@ -1330,7 +1311,6 @@
                 const cover = coverToggleModal.checked;
 
                 if (textModalEditingId !== null) {
-                    // Update existing text
                     const obj = objects.find(o => o.id === textModalEditingId);
                     if (obj && obj.type === 'text') {
                         const oldPage = obj.page;
@@ -1346,9 +1326,7 @@
                             rotation: oldRot
                         });
                     }
-                    cancelEditing();
                 } else {
-                    // Add new text
                     objects.push({
                         id: idCounter++,
                         type: 'text',
@@ -1374,19 +1352,16 @@
             textModalCancel.addEventListener('click', closeTextModal);
             textModalAdd.addEventListener('click', handleTextModalAdd);
 
-            // Close text modal on overlay click
             textModalOverlay.addEventListener('click', (e) => {
                 if (e.target === textModalOverlay) closeTextModal();
             });
 
-            // Close on Escape
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && textModalOverlay.classList.contains('active')) {
                     closeTextModal();
                 }
             });
 
-            // Enter key in text input triggers add
             textInputModal.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') handleTextModalAdd();
             });
@@ -1419,7 +1394,6 @@
             let isRendering = false;
             let pendingRender = false;
             let pdfLoaded = false;
-
             let hasUnsavedChanges = false;
 
             let transformMode = null;
@@ -1786,10 +1760,6 @@
                 pdfjsDoc = await loadingTask.promise;
 
                 currentPageIndex = 0;
-                actionBtn.textContent = '➕ Add';
-                cancelBtn.style.display = 'none';
-                deleteSelectedBtn.style.display = 'none';
-
                 uploadPrompt.style.display = 'none';
                 pdfView.classList.add('active');
                 choosePdfBtn.style.display = 'none';
@@ -1801,54 +1771,6 @@
                 hasUnsavedChanges = false;
                 setStatus(`Loaded: ${file.name} · ${pageCount} page(s)`);
                 await renderOverlay();
-            }
-
-            // ─── Save text (used by Actions "Add" button) ───
-            function saveTextFromModal() {
-                if (!pdfDoc) { alert('Please upload a PDF first.'); return; }
-
-                const text = textInputModal.value || 'Hello';
-                const size = parseFloat(sizeInputModal.value) || 24;
-                const font = fontSelectModal.value;
-                const color = colorInputModal.value;
-                const bgColor = coverToggleModal.checked ? bgColorInputModal.value : null;
-                const cover = coverToggleModal.checked;
-
-                if (editingId !== null) {
-                    const obj = objects.find(o => o.id === editingId);
-                    if (obj && obj.type === 'text') {
-                        const oldPage = obj.page;
-                        const oldRot = obj.rotation || 0;
-                        Object.assign(obj, {
-                            lines: [text],
-                            size,
-                            font,
-                            color,
-                            bgColor,
-                            cover,
-                            page: oldPage,
-                            rotation: oldRot
-                        });
-                    }
-                    cancelEditing();
-                } else {
-                    objects.push({
-                        id: idCounter++,
-                        type: 'text',
-                        page: currentPageIndex,
-                        lines: [text],
-                        x: 50,
-                        y: 50,
-                        size,
-                        font,
-                        color,
-                        bgColor,
-                        cover,
-                        rotation: 0
-                    });
-                }
-                hasUnsavedChanges = true;
-                renderOverlay();
             }
 
             // ─── Add Image ───
@@ -1982,7 +1904,7 @@
             function closeModal() { modal.classList.remove('active');
                 isDrawing = false; }
 
-            // ─── Edit / Cancel / Delete ───
+            // ─── Edit / Delete (via object list) ───
             function startEditing(id) {
                 const obj = objects.find(o => o.id === id);
                 if (!obj) return;
@@ -1990,54 +1912,25 @@
                 if (obj.type === 'text') {
                     // Open text modal in edit mode
                     openTextModal(id);
-                    // The modal handles the rest
-                    // But we need to set the action button text for consistency
-                    actionBtn.textContent = '🔄 Update';
                     return;
                 } else {
                     setStatus(`Editing ${obj.type} – drag to reposition, corners to resize, top to rotate`, true);
-                    actionBtn.textContent = '🔄 Update';
                 }
-                cancelBtn.style.display = 'inline-flex';
-                deleteSelectedBtn.style.display = 'inline-flex';
                 renderOverlay();
             }
 
-            // Override startEditing for text to use modal
-            // The function above handles it
-
-            function cancelEditing() {
+            function deselectObject() {
                 editingId = null;
                 transformMode = null;
                 transformHandle = null;
-                actionBtn.textContent = '➕ Add';
-                cancelBtn.style.display = 'none';
-                deleteSelectedBtn.style.display = 'none';
                 renderOverlay();
-            }
-
-            function deleteSelected() {
-                if (editingId === null) return;
-                if (!confirm('Delete this object?')) return;
-                deleteObject(editingId);
             }
 
             function deleteObject(id) {
+                if (!confirm('Delete this object?')) return;
                 objects = objects.filter(o => o.id !== id);
-                if (editingId === id) cancelEditing();
+                if (editingId === id) deselectObject();
                 if (draggingItem === id) draggingItem = null;
-                hasUnsavedChanges = true;
-                renderOverlay();
-            }
-
-            function clearAll() {
-                if (objects.length === 0) return;
-                if (!confirm('Remove all objects?')) return;
-                objects = [];
-                idCounter = 0;
-                editingId = null;
-                draggingItem = null;
-                cancelEditing();
                 hasUnsavedChanges = true;
                 renderOverlay();
             }
@@ -2249,7 +2142,7 @@
                     return;
                 }
 
-                if (editingId !== null) cancelEditing();
+                if (editingId !== null) deselectObject();
             }
 
             function onMouseMove(e) {
@@ -2453,10 +2346,10 @@
             function onKeyDown(e) {
                 if (editingId !== null && (e.key === 'Delete' || e.key === 'Backspace')) {
                     e.preventDefault();
-                    deleteSelected();
+                    deleteObject(editingId);
                 }
                 if (e.key === 'Escape' && editingId !== null) {
-                    cancelEditing();
+                    deselectObject();
                 }
             }
 
@@ -2551,13 +2444,13 @@
                         if (deltaX < 0) {
                             if (currentPageIndex < pageCount - 1) {
                                 currentPageIndex++;
-                                cancelEditing();
+                                deselectObject();
                                 renderOverlay();
                             }
                         } else {
                             if (currentPageIndex > 0) {
                                 currentPageIndex--;
-                                cancelEditing();
+                                deselectObject();
                                 renderOverlay();
                             }
                         }
@@ -2590,7 +2483,7 @@
             prevPageBtn.addEventListener('click', () => {
                 if (currentPageIndex > 0) {
                     currentPageIndex--;
-                    cancelEditing();
+                    deselectObject();
                     renderOverlay();
                 }
             });
@@ -2598,30 +2491,11 @@
             nextPageBtn.addEventListener('click', () => {
                 if (currentPageIndex < pageCount - 1) {
                     currentPageIndex++;
-                    cancelEditing();
+                    deselectObject();
                     renderOverlay();
                 }
             });
 
-            // Actions "Add" button - uses text modal values
-            actionBtn.addEventListener('click', () => {
-                // Check if there's an editing object that's not text
-                if (editingId !== null) {
-                    const obj = objects.find(o => o.id === editingId);
-                    if (obj && obj.type !== 'text') {
-                        cancelEditing();
-                        return;
-                    }
-                }
-                // For text, use the modal values
-                saveTextFromModal();
-                // If we were editing, cancel editing state
-                if (editingId !== null) cancelEditing();
-            });
-
-            cancelBtn.addEventListener('click', cancelEditing);
-            deleteSelectedBtn.addEventListener('click', deleteSelected);
-            clearBtn.addEventListener('click', clearAll);
             saveBtn.addEventListener('click', savePDF);
 
             addImageBtn.addEventListener('click', () => imageFileInput.click());
@@ -2684,7 +2558,7 @@
             hasUnsavedChanges = false;
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Refresh warning implemented');
+            console.log('✅ PDF Editor – Actions section removed');
         })();
     </script>
 </body>
