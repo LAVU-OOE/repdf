@@ -221,6 +221,8 @@
             border-radius: 16px;
             padding: 40px 20px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+            border: 2px dashed #cbd5e1;
+            transition: border-color 0.2s;
         }
 
         .upload-prompt .upload-icon {
@@ -1190,10 +1192,8 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js">
-    </script>
-    <script src="https://unpkg.com/pdfjs-dist@2.3.200/build/pdf.min.js">
-    </script>
+    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/pdfjs-dist@2.3.200/build/pdf.min.js"></script>
 
     <script>
         (function() {
@@ -1500,29 +1500,6 @@
                 }));
             }
 
-            function getRotatedMidpoints(obj) {
-                const corners = getRotatedCorners(obj);
-                return [
-                    { x: (corners[0].x + corners[1].x) / 2, y: (corners[0].y + corners[1].y) / 2 },
-                    { x: (corners[1].x + corners[2].x) / 2, y: (corners[1].y + corners[2].y) / 2 },
-                    { x: (corners[2].x + corners[3].x) / 2, y: (corners[2].y + corners[3].y) / 2 },
-                    { x: (corners[3].x + corners[0].x) / 2, y: (corners[3].y + corners[0].y) / 2 }
-                ];
-            }
-
-            function getRotateHandle(obj) {
-                const corners = getRotatedCorners(obj);
-                const topMid = { x: (corners[0].x + corners[1].x) / 2, y: (corners[0].y + corners[1].y) / 2 };
-                const cx = obj.x + obj.width / 2;
-                const cy = obj.y + obj.height / 2;
-                const dx = topMid.x - cx;
-                const dy = topMid.y - cy;
-                const dist = Math.hypot(dx, dy);
-                if (dist === 0) return { x: cx, y: cy - 40 };
-                const s = (dist + 30) / dist;
-                return { x: cx + dx * s, y: cy + dy * s };
-            }
-
             function isPointInRotatedRect(obj, mx, my) {
                 const cx = obj.x + obj.width / 2;
                 const cy = obj.y + obj.height / 2;
@@ -1539,21 +1516,7 @@
             }
 
             function drawTransformHandles(obj, w, h) {
-                const corners = [
-                    { x: obj.x, y: obj.y },
-                    { x: obj.x + w, y: obj.y },
-                    { x: obj.x + w, y: obj.y + h },
-                    { x: obj.x, y: obj.y + h }
-                ];
-                const midpoints = [
-                    { x: obj.x + w / 2, y: obj.y },
-                    { x: obj.x + w, y: obj.y + h / 2 },
-                    { x: obj.x + w / 2, y: obj.y + h },
-                    { x: obj.x, y: obj.y + h / 2 }
-                ];
-                const allPoints = [...corners, ...midpoints];
                 const labels = ['tl', 'tr', 'br', 'bl', 'tc', 'mr', 'bc', 'ml'];
-
                 const rot = obj.rotation || 0;
                 const cx = obj.x + w / 2;
                 const cy = obj.y + h / 2;
@@ -1892,8 +1855,10 @@
                 lastY = c.y;
             }
 
-            function stopDrawing(e) { e.preventDefault();
-                isDrawing = false; }
+            function stopDrawing(e) { 
+                if(e && e.preventDefault) e.preventDefault();
+                isDrawing = false; 
+            }
 
             function clearSignature() {
                 sigCtx.fillStyle = 'white';
@@ -1940,8 +1905,10 @@
                 closeMenu();
             }
 
-            function closeModal() { modal.classList.remove('active');
-                isDrawing = false; }
+            function closeModal() { 
+                modal.classList.remove('active');
+                isDrawing = false; 
+            }
 
             // ─── Edit / Delete (via object list) ───
             function startEditing(id) {
@@ -2012,101 +1979,100 @@
             }
 
             // ─── Save PDF ───
-async function savePDF() {
-    if (!pdfDoc || !pdfFile) { alert('No PDF loaded.'); return; }
-    try {
-        const pages = pdfDoc.getPages();
+            async function savePDF() {
+                if (!pdfDoc || !pdfFile) { alert('No PDF loaded.'); return; }
+                try {
+                    const pages = pdfDoc.getPages();
 
-        // Map HTML dropdown values to valid PDFLib StandardFonts keys
-        const fontMap = {
-            'Helvetica': PDFLib.StandardFonts.Helvetica,
-            'Helvetica-Bold': PDFLib.StandardFonts.HelveticaBold,
-            'Helvetica-Oblique': PDFLib.StandardFonts.HelveticaOblique,
-            'Helvetica-BoldOblique': PDFLib.StandardFonts.HelveticaBoldOblique,
-            'Times-Roman': PDFLib.StandardFonts.TimesRoman,
-            'Times-Bold': PDFLib.StandardFonts.TimesRomanBold,
-            'Times-Italic': PDFLib.StandardFonts.TimesRomanItalic,
-            'Times-BoldItalic': PDFLib.StandardFonts.TimesRomanBoldItalic,
-            'Courier': PDFLib.StandardFonts.Courier,
-            'Courier-Bold': PDFLib.StandardFonts.CourierBold,
-            'Courier-Oblique': PDFLib.StandardFonts.CourierOblique,
-            'Courier-BoldOblique': PDFLib.StandardFonts.CourierBoldOblique,
-            'Symbol': PDFLib.StandardFonts.Symbol,
-            'ZapfDingbats': PDFLib.StandardFonts.ZapfDingbats
-        };
+                    const fontMap = {
+                        'Helvetica': PDFLib.StandardFonts.Helvetica,
+                        'Helvetica-Bold': PDFLib.StandardFonts.HelveticaBold,
+                        'Helvetica-Oblique': PDFLib.StandardFonts.HelveticaOblique,
+                        'Helvetica-BoldOblique': PDFLib.StandardFonts.HelveticaBoldOblique,
+                        'Times-Roman': PDFLib.StandardFonts.TimesRoman,
+                        'Times-Bold': PDFLib.StandardFonts.TimesRomanBold,
+                        'Times-Italic': PDFLib.StandardFonts.TimesRomanItalic,
+                        'Times-BoldItalic': PDFLib.StandardFonts.TimesRomanBoldItalic,
+                        'Courier': PDFLib.StandardFonts.Courier,
+                        'Courier-Bold': PDFLib.StandardFonts.CourierBold,
+                        'Courier-Oblique': PDFLib.StandardFonts.CourierOblique,
+                        'Courier-BoldOblique': PDFLib.StandardFonts.CourierBoldOblique,
+                        'Symbol': PDFLib.StandardFonts.Symbol,
+                        'ZapfDingbats': PDFLib.StandardFonts.ZapfDingbats
+                    };
 
-        for (const obj of objects) {
-            const targetPage = pages[obj.page || 0] || pages[0];
-            const { height } = targetPage.getSize();
+                    for (const obj of objects) {
+                        const targetPage = pages[obj.page || 0] || pages[0];
+                        const { height } = targetPage.getSize();
 
-            if (obj.type === 'text') {
-                const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
-                const w = dims.width, h = dims.height;
-                const pdfY = height - obj.y - h;
+                        if (obj.type === 'text') {
+                            const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
+                            const w = dims.width, h = dims.height;
+                            const pdfY = height - obj.y - h;
 
-                if (obj.cover && obj.bgColor) {
-                    const rgb = hexToRgb(obj.bgColor);
-                    targetPage.drawRectangle({
-                        x: obj.x,
-                        y: pdfY,
-                        width: w,
-                        height: h,
-                        color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                    });
+                            if (obj.cover && obj.bgColor) {
+                                const rgb = hexToRgb(obj.bgColor);
+                                targetPage.drawRectangle({
+                                    x: obj.x,
+                                    y: pdfY,
+                                    width: w,
+                                    height: h,
+                                    color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                                });
+                            }
+                            const trgb = hexToRgb(obj.color || '#e74c3c');
+                            
+                            const selectedFontKey = fontMap[obj.font] || PDFLib.StandardFonts.Helvetica;
+                            const font = await pdfDoc.embedFont(selectedFontKey);
+
+                            targetPage.drawText(obj.lines[0], {
+                                x: obj.x,
+                                y: pdfY + (h * 0.2),
+                                size: obj.size,
+                                font,
+                                color: PDFLib.rgb(trgb.r, trgb.g, trgb.b),
+                            });
+                        } else if (obj.type === 'image' || obj.type === 'signature') {
+                            const resp = await fetch(obj.data);
+                            const blob = await resp.blob();
+                            const buf = await blob.arrayBuffer();
+                            let img;
+                            if (blob.type === 'image/png') img = await pdfDoc.embedPng(buf);
+                            else if (blob.type === 'image/jpeg' || blob.type === 'image/jpg') img = await pdfDoc.embedJpg(buf);
+                            else img = await pdfDoc.embedPng(buf);
+
+                            const w = obj.width || img.width;
+                            const h = obj.height || img.height;
+                            const pdfY = height - obj.y - h;
+                            const rad = (obj.rotation || 0) * Math.PI / 180;
+
+                            targetPage.drawImage(img, {
+                                x: obj.x,
+                                y: pdfY,
+                                width: w,
+                                height: h,
+                                rotate: PDFLib.radians(rad),
+                            });
+                        }
+                    }
+
+                    const pdfBytes = await pdfDoc.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'edited_document.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                    hasUnsavedChanges = false;
+                    setStatus('✅ PDF saved successfully!');
+                } catch (e) {
+                    console.error(e);
+                    alert('Save failed: ' + e.message);
                 }
-                const trgb = hexToRgb(obj.color || '#e74c3c');
-                
-                // Select mapped standard font or fallback to Helvetica
-                const selectedFontKey = fontMap[obj.font] || PDFLib.StandardFonts.Helvetica;
-                const font = await pdfDoc.embedFont(selectedFontKey);
-
-                targetPage.drawText(obj.lines[0], {
-                    x: obj.x,
-                    y: pdfY + (h * 0.2), // Adjusted alignment offset
-                    size: obj.size,
-                    font,
-                    color: PDFLib.rgb(trgb.r, trgb.g, trgb.b),
-                });
-            } else if (obj.type === 'image' || obj.type === 'signature') {
-                const resp = await fetch(obj.data);
-                const blob = await resp.blob();
-                const buf = await blob.arrayBuffer();
-                let img;
-                if (blob.type === 'image/png') img = await pdfDoc.embedPng(buf);
-                else if (blob.type === 'image/jpeg' || blob.type === 'image/jpg') img = await pdfDoc.embedJpg(buf);
-                else img = await pdfDoc.embedPng(buf);
-
-                const w = obj.width || img.width;
-                const h = obj.height || img.height;
-                const pdfY = height - obj.y - h;
-                const rad = (obj.rotation || 0) * Math.PI / 180;
-
-                targetPage.drawImage(img, {
-                    x: obj.x,
-                    y: pdfY,
-                    width: w,
-                    height: h,
-                    rotate: PDFLib.radians(rad), // Wrapped in PDFLib.radians
-                });
             }
-        }
 
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'edited_document.pdf';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        hasUnsavedChanges = false;
-        setStatus('✅ PDF saved successfully!');
-    } catch (e) {
-        console.error(e);
-        alert('Save failed: ' + e.message);
-    }
-}
             function hexToRgb(hex) {
                 const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                 return r ? { r: parseInt(r[1], 16) / 255, g: parseInt(r[2], 16) / 255, b: parseInt(r[3], 16) / 255 } :
@@ -2374,7 +2340,7 @@ async function savePDF() {
                     transformMode = null;
                     transformHandle = null;
                     renderOverlay();
-                    e.preventDefault();
+                    if(e && e.preventDefault) e.preventDefault();
                 }
 
                 if (draggingItem !== null) {
@@ -2387,7 +2353,7 @@ async function savePDF() {
                     draggingItem = null;
                     canvas.classList.remove('dragging');
                     renderOverlay();
-                    e.preventDefault();
+                    if(e && e.preventDefault) e.preventDefault();
                 }
 
                 if (changed) {
@@ -2475,9 +2441,9 @@ async function savePDF() {
                     e.preventDefault();
                 } else if (!ignoreSwipe) {
                     const t = e.touches[0];
-                    const deltaX = t.clientX - touchStartX;
-                    const deltaY = t.clientY - touchStartY;
-                    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                    const diffX = t.clientX - touchStartX;
+                    const diffY = t.clientY - touchStartY;
+                    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
                         touchMoved = true;
                         e.preventDefault();
                     }
@@ -2495,27 +2461,25 @@ async function savePDF() {
                     });
                     window.dispatchEvent(mouseEvent);
                     touchStartedOnObject = false;
-                    ignoreSwipe = false;
-                } else if (!ignoreSwipe && touchMoved) {
+                } else if (!ignoreSwipe && touchMoved && e.changedTouches.length > 0) {
                     const t = e.changedTouches[0];
-                    const deltaX = t.clientX - touchStartX;
-                    if (Math.abs(deltaX) > 50) {
-                        if (deltaX < 0) {
-                            if (currentPageIndex < pageCount - 1) {
-                                currentPageIndex++;
-                                deselectObject();
-                                renderOverlay();
-                            }
-                        } else {
-                            if (currentPageIndex > 0) {
-                                currentPageIndex--;
-                                deselectObject();
-                                renderOverlay();
-                            }
+                    const diffX = t.clientX - touchStartX;
+                    const diffY = t.clientY - touchStartY;
+
+                    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+                        if (diffX < 0 && currentPageIndex < pageCount - 1) {
+                            currentPageIndex++;
+                            deselectObject();
+                            renderOverlay();
+                        } else if (diffX > 0 && currentPageIndex > 0) {
+                            currentPageIndex--;
+                            deselectObject();
+                            renderOverlay();
                         }
                     }
                 }
-                e.preventDefault();
+                ignoreSwipe = false;
+                if(e && e.preventDefault) e.preventDefault();
             }
 
             // ─── Before Unload Warning ───
@@ -2527,14 +2491,14 @@ async function savePDF() {
             });
 
             // ─── Event Bindings ───
-
             uploadButton.addEventListener('click', () => fileInput.click());
             choosePdfBtn.addEventListener('click', () => fileInput.click());
             changePdfBtn.addEventListener('click', () => fileInput.click());
 
             fileInput.addEventListener('change', (e) => {
-                if (e.target.files[0]) {
-                    loadPDF(e.target.files[0]);
+                const file = e.target.files[0];
+                if (file) {
+                    loadPDF(file);
                     fileInput.value = '';
                 }
             });
@@ -2559,8 +2523,11 @@ async function savePDF() {
 
             addImageBtn.addEventListener('click', () => imageFileInput.click());
             imageFileInput.addEventListener('change', (e) => {
-                if (e.target.files[0]) { addImage(e.target.files[0]);
-                    imageFileInput.value = ''; }
+                const file = e.target.files[0];
+                if (file) {
+                    addImage(file);
+                    imageFileInput.value = '';
+                }
             });
 
             drawSignatureBtn.addEventListener('click', openModal);
@@ -2604,8 +2571,29 @@ async function savePDF() {
                 ignoreSwipe = false;
                 const mouseEvent = new MouseEvent('mouseup', { bubbles: true, cancelable: true });
                 window.dispatchEvent(mouseEvent);
-                e.preventDefault();
+                if(e && e.preventDefault) e.preventDefault();
             }, { passive: false });
+
+            // Drag and drop onto upload prompt
+            uploadPrompt.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadPrompt.style.borderColor = '#1a4b60';
+            });
+
+            uploadPrompt.addEventListener('dragleave', () => {
+                uploadPrompt.style.borderColor = '#cbd5e1';
+            });
+
+            uploadPrompt.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadPrompt.style.borderColor = '#cbd5e1';
+                const file = e.dataTransfer.files[0];
+                if (file && file.type === 'application/pdf') {
+                    loadPDF(file);
+                } else {
+                    alert('Please drop a valid PDF file.');
+                }
+            });
 
             // ─── Initial state ───
             pdfLoaded = false;
@@ -2613,7 +2601,7 @@ async function savePDF() {
             updateUIState();
             setStatus('📄 Upload a PDF to get started');
 
-            console.log('✅ PDF Editor – Insert & Objects sections grayed out until PDF is loaded');
+            console.log('✅ PDF Editor initialized');
         })();
     </script>
 </body>
