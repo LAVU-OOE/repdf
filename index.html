@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PWA PDF Signature Tool</title>
+  <title>PWA Multi-Page PDF Signer</title>
   
-  <!-- PDF.js for rendering PDF to canvas -->
+  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- pdf-lib for embedding signature image into PDF -->
+  <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <!-- SignaturePad for touch/pen drawing -->
+  <!-- SignaturePad -->
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
   <style>
@@ -19,33 +19,51 @@
     }
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #1e1e24;
-      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #121214;
+      color: #f3f4f6;
       display: flex;
       flex-direction: column;
       height: 100vh;
+      height: 100dvh; /* Dynamic viewport height for mobile browsers */
+      overflow: hidden;
     }
     header {
-      padding: 1rem;
-      background: #2b2b36;
+      padding: 0.75rem 1rem;
+      background: #1f2023;
+      border-bottom: 1px solid #2e3035;
       display: flex;
       gap: 10px;
       align-items: center;
+      justify-content: space-between;
       flex-wrap: wrap;
+      z-index: 10;
     }
-    button, input[type="file"] {
-      background: #3b82f6;
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    button, label.file-btn {
+      background: #2563eb;
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 6px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    button:disabled {
-      opacity: 0.5;
+    button:disabled, label.file-btn.disabled {
+      opacity: 0.4;
       cursor: not-allowed;
+      pointer-events: none;
+    }
+    input[type="file"] {
+      display: none;
     }
     main {
       flex: 1;
@@ -53,55 +71,83 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 20px;
+      padding: 12px;
+      background: #18181b;
     }
+    /* Flexible Responsive Canvas Container */
     #pdf-wrapper {
       position: relative;
-      border: 1px solid #444;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      max-width: 100%;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      background: #fff;
+      border-radius: 4px;
+      overflow: hidden;
     }
     #pdf-canvas {
       display: block;
+      width: 100%; /* Scales dynamically to parent */
+      height: auto;
     }
-    /* Modal for signing */
+    /* Signature Modal */
     #sig-modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(4px);
       z-index: 1000;
       justify-content: center;
       align-items: center;
+      padding: 16px;
     }
     .modal-content {
-      background: #2b2b36;
+      background: #27272a;
       padding: 20px;
       border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
+      width: 100%;
+      max-width: 480px;
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
     }
     #sig-canvas {
-      background: #fff;
-      border-radius: 6px;
+      background: #ffffff;
+      border-radius: 8px;
       width: 100%;
-      height: 200px;
+      height: 180px;
       touch-action: none;
     }
     .modal-actions {
       display: flex;
       justify-content: space-between;
+      gap: 8px;
+    }
+    .page-indicator {
+      font-size: 14px;
+      font-weight: 500;
+      color: #a1a1aa;
     }
   </style>
 </head>
 <body>
 
   <header>
-    <input type="file" id="file-input" accept="application/pdf" />
-    <button id="add-sig-btn" disabled>Place Signature</button>
-    <button id="save-btn" disabled>Save & Download PDF</button>
+    <div class="btn-group">
+      <label class="file-btn">
+        Open PDF
+        <input type="file" id="file-input" accept="application/pdf" />
+      </label>
+      <button id="add-sig-btn" disabled>Sign</button>
+      <button id="save-btn" style="background:#16a34a;" disabled>Save</button>
+    </div>
+
+    <!-- Multi-Page Pagination Controls -->
+    <div class="btn-group">
+      <button id="prev-page" style="background:#3f3f46;" disabled>&lt;</button>
+      <span class="page-indicator" id="page-num-display">Page 0 / 0</span>
+      <button id="next-page" style="background:#3f3f46;" disabled>&gt;</button>
+    </div>
   </header>
 
   <main>
@@ -113,12 +159,12 @@
   <!-- Signature Modal -->
   <div id="sig-modal">
     <div class="modal-content">
-      <h3>Draw Signature</h3>
+      <h3 style="margin:0;">Draw Signature</h3>
       <canvas id="sig-canvas"></canvas>
       <div class="modal-actions">
-        <button id="clear-sig">Clear</button>
-        <div>
-          <button id="cancel-sig" style="background:#6b7280;">Cancel</button>
+        <button id="clear-sig" style="background:#52525b;">Clear</button>
+        <div class="btn-group">
+          <button id="cancel-sig" style="background:#52525b;">Cancel</button>
           <button id="confirm-sig">Apply</button>
         </div>
       </div>
@@ -130,15 +176,18 @@
 
   let rawPdfBytes = null;
   let pdfDoc = null;
-  let pdfPage = null;
+  let currentPageIndex = 1;
+  let totalPages = 0;
   let signaturePad = null;
   let pendingSignatureImg = null;
 
   const fileInput = document.getElementById('file-input');
   const addSigBtn = document.getElementById('add-sig-btn');
   const saveBtn = document.getElementById('save-btn');
+  const prevBtn = document.getElementById('prev-page');
+  const nextBtn = document.getElementById('next-page');
+  const pageDisplay = document.getElementById('page-num-display');
   const pdfCanvas = document.getElementById('pdf-canvas');
-  const pdfWrapper = document.getElementById('pdf-wrapper');
   
   // Modal Elements
   const sigModal = document.getElementById('sig-modal');
@@ -147,33 +196,66 @@
   const cancelSigBtn = document.getElementById('cancel-sig');
   const confirmSigBtn = document.getElementById('confirm-sig');
 
-  // Load PDF File
+  // Load PDF
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     rawPdfBytes = await file.arrayBuffer();
-    
-    // Render first page with PDF.js
+    currentPageIndex = 1;
+    await renderPdfDoc();
+  });
+
+  async function renderPdfDoc() {
     const loadingTask = pdfjsLib.getDocument({ data: rawPdfBytes });
     pdfDoc = await loadingTask.promise;
-    pdfPage = await pdfDoc.getPage(1);
+    totalPages = pdfDoc.numPages;
+    
+    await renderPage(currentPageIndex);
+    updateControls();
+  }
 
-    const viewport = pdfPage.getViewport({ scale: 1.5 });
+  async function renderPage(pageNumber) {
+    const page = await pdfDoc.getPage(pageNumber);
+    
+    // Scale high enough for crisp text rendering on mobile high-DPI screens
+    const viewport = page.getViewport({ scale: 2.0 });
     const context = pdfCanvas.getContext('2d');
     
     pdfCanvas.width = viewport.width;
     pdfCanvas.height = viewport.height;
 
-    await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
+    await page.render({ canvasContext: context, viewport: viewport }).promise;
+  }
 
+  function updateControls() {
+    pageDisplay.textContent = `Page ${currentPageIndex} / ${totalPages}`;
+    prevBtn.disabled = currentPageIndex <= 1;
+    nextBtn.disabled = currentPageIndex >= totalPages;
     addSigBtn.disabled = false;
+    saveBtn.disabled = false;
+  }
+
+  // Pagination Handlers
+  prevBtn.addEventListener('click', async () => {
+    if (currentPageIndex > 1) {
+      currentPageIndex--;
+      await renderPage(currentPageIndex);
+      updateControls();
+    }
   });
 
-  // Setup Signature Pad Modal
+  nextBtn.addEventListener('click', async () => {
+    if (currentPageIndex < totalPages) {
+      currentPageIndex++;
+      await renderPage(currentPageIndex);
+      updateControls();
+    }
+  });
+
+  // Modal Setup
   addSigBtn.addEventListener('click', () => {
     sigModal.style.display = 'flex';
-    // Setup pad resolution based on container
     const rect = sigCanvas.getBoundingClientRect();
     sigCanvas.width = rect.width;
     sigCanvas.height = rect.height;
@@ -189,77 +271,73 @@
   cancelSigBtn.addEventListener('click', () => sigModal.style.display = 'none');
 
   confirmSigBtn.addEventListener('click', () => {
-    if (signaturePad.isEmpty()) return alert('Please provide a signature.');
+    if (signaturePad.isEmpty()) return alert('Please draw a signature first.');
     
     pendingSignatureImg = signaturePad.toDataURL('image/png');
     sigModal.style.display = 'none';
 
-    alert('Click anywhere on the PDF page to place your signature.');
+    alert(`Tap anywhere on page ${currentPageIndex} to place signature.`);
     pdfCanvas.style.cursor = 'crosshair';
-    pdfCanvas.addEventListener('click', handlePlaceSignature, { once: true });
+    pdfCanvas.addEventListener('pointerdown', handlePlaceSignature, { once: true });
   });
 
-  // Core Math: Convert Click to True PDF Coordinates
+  // Precise Responsive Multi-Page Placement Math
   async function handlePlaceSignature(e) {
     if (!pendingSignatureImg) return;
 
+    // Get the actual displayed CSS bounds on device screen
     const rect = pdfCanvas.getBoundingClientRect();
     
-    // 1. Get click relative to rendered CSS bounds
+    // Calculate click coordinates relative to display size
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    // 2. Load PDF with pdf-lib to get actual point dimensions
+    // Load PDF in pdf-lib
     const pdfLibDoc = await PDFLib.PDFDocument.load(rawPdfBytes);
-    const firstPage = pdfLibDoc.getPages()[0];
-    const { width: pdfWidth, height: pdfHeight } = firstPage.getSize();
+    
+    // Select current target page (0-indexed in pdf-lib)
+    const targetPage = pdfLibDoc.getPages()[currentPageIndex - 1];
+    const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
 
-    // 3. Compute Scaling Factor (DOM Canvas vs PDF Points)
+    // Responsive scaling factor (Maps display CSS pixels directly to true PDF points)
     const scaleX = pdfWidth / rect.width;
     const scaleY = pdfHeight / rect.height;
 
-    // Target dimensions for signature in PDF points
-    const sigPdfWidth = 120;
-    const sigPdfHeight = 50;
+    // Fixed signature size in PDF points
+    const sigPdfWidth = 140;
+    const sigPdfHeight = 55;
 
-    // 4. Map top-left DOM click coordinates to bottom-left PDF coordinate system
-    const targetPdfX = clickX * scaleX - (sigPdfWidth / 2);
+    // Calculate center placement based on click point
+    const targetPdfX = (clickX * scaleX) - (sigPdfWidth / 2);
     
-    // Invert Y-Axis
+    // Invert Y-Axis (HTML Top-Down -> PDF Bottom-Up)
     const targetPdfY = pdfHeight - (clickY * scaleY) - (sigPdfHeight / 2);
 
-    // 5. Embed image into PDF
+    // Embed PNG image onto current page
     const pngImage = await pdfLibDoc.embedPng(pendingSignatureImg);
-    firstPage.drawImage(pngImage, {
+    targetPage.drawImage(pngImage, {
       x: targetPdfX,
       y: targetPdfY,
       width: sigPdfWidth,
       height: sigPdfHeight,
     });
 
-    // 6. Save modified PDF back to memory
+    // Save PDF
     rawPdfBytes = await pdfLibDoc.save();
 
-    // Re-render PDF preview to show placed signature
-    const loadingTask = pdfjsLib.getDocument({ data: rawPdfBytes });
-    pdfDoc = await loadingTask.promise;
-    pdfPage = await pdfDoc.getPage(1);
-    
-    const viewport = pdfPage.getViewport({ scale: 1.5 });
-    const context = pdfCanvas.getContext('2d');
-    await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
+    // Re-render updated page
+    await renderPdfDoc();
 
     pdfCanvas.style.cursor = 'default';
-    saveBtn.disabled = false;
     pendingSignatureImg = null;
   }
 
-  // Download PDF
+  // Download Output
   saveBtn.addEventListener('click', () => {
     const blob = new Blob([rawPdfBytes], { type: 'application/pdf' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'signed-document.pdf';
+    link.download = `signed_document_p${currentPageIndex}.pdf`;
     link.click();
   });
 </script>
