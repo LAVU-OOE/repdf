@@ -3,19 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PWA Multi-Page PDF Signer</title>
+  <title>PWA PDF Signer</title>
   
-  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <!-- SignaturePad -->
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
   <style>
     * {
       box-sizing: border-box;
-      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       margin: 0;
@@ -25,11 +22,11 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      height: 100dvh; /* Dynamic viewport height for mobile browsers */
+      height: 100dvh;
       overflow: hidden;
     }
     header {
-      padding: 0.75rem 1rem;
+      padding: 10px 14px;
       background: #1f2023;
       border-bottom: 1px solid #2e3035;
       display: flex;
@@ -48,7 +45,7 @@
       background: #2563eb;
       color: white;
       border: none;
-      padding: 8px 14px;
+      padding: 10px 16px;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 600;
@@ -59,12 +56,10 @@
     }
     button:disabled, label.file-btn.disabled {
       opacity: 0.4;
-      cursor: not-allowed;
       pointer-events: none;
     }
-    input[type="file"] {
-      display: none;
-    }
+    input[type="file"] { display: none; }
+    
     main {
       flex: 1;
       overflow: auto;
@@ -73,8 +68,10 @@
       align-items: flex-start;
       padding: 12px;
       background: #18181b;
+      touch-action: pan-x pan-y;
     }
-    /* Flexible Responsive Canvas Container */
+    
+    /* PDF Container */
     #pdf-wrapper {
       position: relative;
       max-width: 100%;
@@ -82,13 +79,48 @@
       background: #fff;
       border-radius: 4px;
       overflow: hidden;
+      user-select: none;
     }
     #pdf-canvas {
       display: block;
-      width: 100%; /* Scales dynamically to parent */
+      width: 100%;
       height: auto;
     }
-    /* Signature Modal */
+
+    /* Interactive Overlay State */
+    .placement-mode #pdf-canvas {
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Draggable Signature Overlay */
+    #sig-overlay {
+      display: none;
+      position: absolute;
+      border: 2px dashed #2563eb;
+      background: rgba(37, 99, 235, 0.1);
+      cursor: move;
+      touch-action: none;
+      z-index: 5;
+    }
+    #sig-overlay img {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .overlay-actions {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      display: flex;
+      gap: 4px;
+    }
+    .overlay-actions button {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    /* Modal */
     #sig-modal {
       display: none;
       position: fixed;
@@ -109,7 +141,6 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
     }
     #sig-canvas {
       background: #ffffff;
@@ -121,11 +152,9 @@
     .modal-actions {
       display: flex;
       justify-content: space-between;
-      gap: 8px;
     }
     .page-indicator {
       font-size: 14px;
-      font-weight: 500;
       color: #a1a1aa;
     }
   </style>
@@ -138,11 +167,10 @@
         Open PDF
         <input type="file" id="file-input" accept="application/pdf" />
       </label>
-      <button id="add-sig-btn" disabled>Sign</button>
-      <button id="save-btn" style="background:#16a34a;" disabled>Save</button>
+      <button id="add-sig-btn" disabled>Draw Signature</button>
+      <button id="save-btn" style="background:#16a34a;" disabled>Download</button>
     </div>
 
-    <!-- Multi-Page Pagination Controls -->
     <div class="btn-group">
       <button id="prev-page" style="background:#3f3f46;" disabled>&lt;</button>
       <span class="page-indicator" id="page-num-display">Page 0 / 0</span>
@@ -153,6 +181,15 @@
   <main>
     <div id="pdf-wrapper">
       <canvas id="pdf-canvas"></canvas>
+      
+      <!-- Interactive Draggable Signature Box -->
+      <div id="sig-overlay">
+        <img id="sig-overlay-img" src="" alt="signature" />
+        <div class="overlay-actions">
+          <button id="apply-overlay-btn" style="background:#16a34a;">Confirm</button>
+          <button id="remove-overlay-btn" style="background:#dc2626;">✕</button>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -165,7 +202,7 @@
         <button id="clear-sig" style="background:#52525b;">Clear</button>
         <div class="btn-group">
           <button id="cancel-sig" style="background:#52525b;">Cancel</button>
-          <button id="confirm-sig">Apply</button>
+          <button id="confirm-sig">Done</button>
         </div>
       </div>
     </div>
@@ -181,6 +218,9 @@
   let signaturePad = null;
   let pendingSignatureImg = null;
 
+  // Active overlay state
+  let overlayPos = { x: 0, y: 0, width: 140, height: 60 };
+
   const fileInput = document.getElementById('file-input');
   const addSigBtn = document.getElementById('add-sig-btn');
   const saveBtn = document.getElementById('save-btn');
@@ -188,8 +228,13 @@
   const nextBtn = document.getElementById('next-page');
   const pageDisplay = document.getElementById('page-num-display');
   const pdfCanvas = document.getElementById('pdf-canvas');
+  const pdfWrapper = document.getElementById('pdf-wrapper');
   
-  // Modal Elements
+  const sigOverlay = document.getElementById('sig-overlay');
+  const sigOverlayImg = document.getElementById('sig-overlay-img');
+  const applyOverlayBtn = document.getElementById('apply-overlay-btn');
+  const removeOverlayBtn = document.getElementById('remove-overlay-btn');
+
   const sigModal = document.getElementById('sig-modal');
   const sigCanvas = document.getElementById('sig-canvas');
   const clearSigBtn = document.getElementById('clear-sig');
@@ -210,15 +255,12 @@
     const loadingTask = pdfjsLib.getDocument({ data: rawPdfBytes });
     pdfDoc = await loadingTask.promise;
     totalPages = pdfDoc.numPages;
-    
     await renderPage(currentPageIndex);
     updateControls();
   }
 
   async function renderPage(pageNumber) {
     const page = await pdfDoc.getPage(pageNumber);
-    
-    // Scale high enough for crisp text rendering on mobile high-DPI screens
     const viewport = page.getViewport({ scale: 2.0 });
     const context = pdfCanvas.getContext('2d');
     
@@ -226,6 +268,7 @@
     pdfCanvas.height = viewport.height;
 
     await page.render({ canvasContext: context, viewport: viewport }).promise;
+    sigOverlay.style.display = 'none';
   }
 
   function updateControls() {
@@ -236,7 +279,7 @@
     saveBtn.disabled = false;
   }
 
-  // Pagination Handlers
+  // Pagination
   prevBtn.addEventListener('click', async () => {
     if (currentPageIndex > 1) {
       currentPageIndex--;
@@ -253,7 +296,7 @@
     }
   });
 
-  // Modal Setup
+  // Modal handlers
   addSigBtn.addEventListener('click', () => {
     sigModal.style.display = 'flex';
     const rect = sigCanvas.getBoundingClientRect();
@@ -276,68 +319,117 @@
     pendingSignatureImg = signaturePad.toDataURL('image/png');
     sigModal.style.display = 'none';
 
-    alert(`Tap anywhere on page ${currentPageIndex} to place signature.`);
-    pdfCanvas.style.cursor = 'crosshair';
-    pdfCanvas.addEventListener('pointerdown', handlePlaceSignature, { once: true });
+    // Enable placement mode
+    pdfWrapper.classList.add('placement-mode');
+    pdfCanvas.addEventListener('pointerdown', placeOverlay, { once: true });
   });
 
-  // Precise Responsive Multi-Page Placement Math
-  async function handlePlaceSignature(e) {
-    if (!pendingSignatureImg) return;
-
-    // Get the actual displayed CSS bounds on device screen
-    const rect = pdfCanvas.getBoundingClientRect();
+  // Step 1: Tap/Click to spawn draggable overlay box
+  function placeOverlay(e) {
+    pdfWrapper.classList.remove('placement-mode');
     
-    // Calculate click coordinates relative to display size
+    const rect = pdfCanvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    // Load PDF in pdf-lib
+    overlayPos.width = 140;
+    overlayPos.height = 60;
+    overlayPos.x = clickX - (overlayPos.width / 2);
+    overlayPos.y = clickY - (overlayPos.height / 2);
+
+    sigOverlayImg.src = pendingSignatureImg;
+    updateOverlayDOM();
+    sigOverlay.style.display = 'block';
+
+    enableDragging();
+  }
+
+  function updateOverlayDOM() {
+    sigOverlay.style.left = `${overlayPos.x}px`;
+    sigOverlay.style.top = `${overlayPos.y}px`;
+    sigOverlay.style.width = `${overlayPos.width}px`;
+    sigOverlay.style.height = `${overlayPos.height}px`;
+  }
+
+  // Step 2: Allow dragging the overlay across touch/mobile viewports
+  function enableDragging() {
+    let isDragging = false;
+    let startX, startY;
+
+    const onPointerDown = (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      isDragging = true;
+      startX = e.clientX - overlayPos.x;
+      startY = e.clientY - overlayPos.y;
+      sigOverlay.setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      overlayPos.x = e.clientX - startX;
+      overlayPos.y = e.clientY - startY;
+      updateOverlayDOM();
+    };
+
+    const onPointerUp = (e) => {
+      isDragging = false;
+      try { sigOverlay.releasePointerCapture(e.pointerId); } catch(err) {}
+    };
+
+    sigOverlay.onpointerdown = onPointerDown;
+    sigOverlay.onpointermove = onPointerMove;
+    sigOverlay.onpointerup = onPointerUp;
+  }
+
+  removeOverlayBtn.addEventListener('click', () => {
+    sigOverlay.style.display = 'none';
+    pendingSignatureImg = null;
+  });
+
+  // Step 3: Bake signature permanently onto PDF Page
+  applyOverlayBtn.addEventListener('click', async () => {
+    if (!pendingSignatureImg) return;
+
+    const rect = pdfCanvas.getBoundingClientRect();
+
     const pdfLibDoc = await PDFLib.PDFDocument.load(rawPdfBytes);
-    
-    // Select current target page (0-indexed in pdf-lib)
     const targetPage = pdfLibDoc.getPages()[currentPageIndex - 1];
     const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
 
-    // Responsive scaling factor (Maps display CSS pixels directly to true PDF points)
+    // Scale calculation
     const scaleX = pdfWidth / rect.width;
     const scaleY = pdfHeight / rect.height;
 
-    // Fixed signature size in PDF points
-    const sigPdfWidth = 140;
-    const sigPdfHeight = 55;
-
-    // Calculate center placement based on click point
-    const targetPdfX = (clickX * scaleX) - (sigPdfWidth / 2);
+    // Convert CSS overlay positions to PDF Points
+    const finalPdfX = overlayPos.x * scaleX;
+    const finalPdfWidth = overlayPos.width * scaleX;
+    const finalPdfHeight = overlayPos.height * scaleY;
     
-    // Invert Y-Axis (HTML Top-Down -> PDF Bottom-Up)
-    const targetPdfY = pdfHeight - (clickY * scaleY) - (sigPdfHeight / 2);
+    // Y-Axis Inversion
+    const finalPdfY = pdfHeight - ((overlayPos.y + overlayPos.height) * scaleY);
 
-    // Embed PNG image onto current page
     const pngImage = await pdfLibDoc.embedPng(pendingSignatureImg);
     targetPage.drawImage(pngImage, {
-      x: targetPdfX,
-      y: targetPdfY,
-      width: sigPdfWidth,
-      height: sigPdfHeight,
+      x: finalPdfX,
+      y: finalPdfY,
+      width: finalPdfWidth,
+      height: finalPdfHeight,
     });
 
-    // Save PDF
     rawPdfBytes = await pdfLibDoc.save();
-
-    // Re-render updated page
-    await renderPdfDoc();
-
-    pdfCanvas.style.cursor = 'default';
+    sigOverlay.style.display = 'none';
     pendingSignatureImg = null;
-  }
+
+    // Re-render PDF with baked signature
+    await renderPdfDoc();
+  });
 
   // Download Output
   saveBtn.addEventListener('click', () => {
     const blob = new Blob([rawPdfBytes], { type: 'application/pdf' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `signed_document_p${currentPageIndex}.pdf`;
+    link.download = `signed_document.pdf`;
     link.click();
   });
 </script>
