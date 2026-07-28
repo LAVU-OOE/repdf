@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>PWA PDF Studio</title>
   
   <!-- External Libraries -->
@@ -15,32 +15,44 @@
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
     }
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #121214;
       color: #f3f4f6;
+    }
+    body {
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
+
+    /* HEADER TOOLBAR */
     header {
-      padding: 10px 14px;
+      padding: 8px 12px;
       background: #1f2023;
       border-bottom: 1px solid #2e3035;
       display: flex;
-      gap: 10px;
+      gap: 8px 12px;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      z-index: 10;
+      z-index: 20;
+      flex-shrink: 0;
     }
     .btn-group {
       display: flex;
       gap: 6px;
       align-items: center;
+      flex-wrap: wrap;
     }
     button, label.file-btn {
       background: #2563eb;
@@ -54,15 +66,21 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      white-space: nowrap;
+      min-height: 36px;
+      touch-action: manipulation;
     }
     button:disabled, label.file-btn.disabled {
-      opacity: 0.4;
+      opacity: 0.35;
       pointer-events: none;
     }
     input[type="file"] { display: none; }
     
+    /* MAIN VIEWPORT CANVAS CONTAINER */
     main {
       flex: 1;
+      width: 100%;
+      height: 100%;
       overflow: auto;
       display: flex;
       justify-content: center;
@@ -70,31 +88,36 @@
       padding: 12px;
       background: #18181b;
       touch-action: pan-x pan-y;
+      position: relative;
     }
     
-    /* PDF Container */
     #pdf-wrapper {
       position: relative;
       max-width: 100%;
+      max-height: 100%;
       box-shadow: 0 8px 30px rgba(0,0,0,0.6);
       background: #fff;
       border-radius: 4px;
-      overflow: hidden;
       user-select: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     #pdf-canvas {
       display: block;
-      width: 100%;
+      max-width: 100%;
+      max-height: calc(100dvh - 120px);
+      width: auto;
       height: auto;
+      object-fit: contain;
     }
 
-    /* Placement Crosshair Mode */
+    /* PLACEMENT & INTERACTIVE OVERLAY */
     .placement-mode #pdf-canvas {
       cursor: crosshair;
       touch-action: none;
     }
 
-    /* Interactive Draggable Overlay Box */
     #active-overlay {
       display: none;
       position: absolute;
@@ -102,7 +125,7 @@
       background: rgba(37, 99, 235, 0.12);
       cursor: move;
       touch-action: none;
-      z-index: 5;
+      z-index: 10;
     }
     #active-overlay .overlay-content {
       width: 100%;
@@ -126,18 +149,18 @@
     }
     .overlay-actions {
       position: absolute;
-      top: -42px;
+      top: -44px;
       right: 0;
       display: flex;
       gap: 6px;
     }
     .overlay-actions button {
-      padding: 6px 10px;
+      padding: 6px 12px;
       font-size: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
 
-    /* Modals */
+    /* RESPONSIVE MODALS */
     .modal {
       display: none;
       position: fixed;
@@ -154,33 +177,54 @@
       padding: 20px;
       border-radius: 12px;
       width: 100%;
-      max-width: 480px;
+      max-width: 460px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
     }
     input[type="text"] {
-      padding: 10px;
+      padding: 12px;
       border-radius: 6px;
       border: 1px solid #3f3f46;
       background: #18181b;
       color: white;
       font-size: 16px;
+      width: 100%;
     }
     #sig-canvas {
       background: #ffffff;
       border-radius: 8px;
       width: 100%;
-      height: 180px;
+      height: 200px;
       touch-action: none;
     }
     .modal-actions {
       display: flex;
       justify-content: space-between;
+      gap: 8px;
     }
     .page-indicator {
-      font-size: 14px;
+      font-size: 13px;
       color: #a1a1aa;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      header {
+        justify-content: center;
+      }
+      .btn-group {
+        width: 100%;
+        justify-content: space-between;
+      }
+      button, label.file-btn {
+        flex: 1;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      .page-indicator {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -202,9 +246,9 @@
     </div>
 
     <div class="btn-group">
-      <button id="prev-page" style="background:#3f3f46;" disabled>&lt;</button>
+      <button id="prev-page" style="background:#3f3f46; flex: initial;" disabled>&lt;</button>
       <span class="page-indicator" id="page-num-display">Page 0 / 0</span>
-      <button id="next-page" style="background:#3f3f46;" disabled>&gt;</button>
+      <button id="next-page" style="background:#3f3f46; flex: initial;" disabled>&gt;</button>
     </div>
   </header>
 
@@ -230,7 +274,7 @@
       <canvas id="sig-canvas"></canvas>
       <div class="modal-actions">
         <button id="clear-sig" style="background:#52525b;">Clear</button>
-        <div class="btn-group">
+        <div class="btn-group" style="width: auto;">
           <button id="cancel-sig" style="background:#52525b;">Cancel</button>
           <button id="confirm-sig">Done</button>
         </div>
@@ -244,7 +288,7 @@
       <h3 style="margin:0;">Add Text Annotation</h3>
       <input type="text" id="text-input-field" placeholder="Enter text..." />
       <div class="modal-actions" style="justify-content: flex-end;">
-        <div class="btn-group">
+        <div class="btn-group" style="width: auto;">
           <button id="cancel-text" style="background:#52525b;">Cancel</button>
           <button id="confirm-text">Apply Text</button>
         </div>
@@ -261,8 +305,7 @@
   let totalPages = 0;
   let signaturePad = null;
 
-  // Active Pending Placement Object
-  let pendingItem = null; // { type: 'png'|'text', dataUrl, text, width, height }
+  let pendingItem = null;
   let overlayPos = { x: 0, y: 0, width: 140, height: 60 };
 
   const fileInput = document.getElementById('file-input');
@@ -283,7 +326,6 @@
   const applyOverlayBtn = document.getElementById('apply-overlay-btn');
   const removeOverlayBtn = document.getElementById('remove-overlay-btn');
 
-  // Modals
   const sigModal = document.getElementById('sig-modal');
   const sigCanvas = document.getElementById('sig-canvas');
   const clearSigBtn = document.getElementById('clear-sig');
@@ -319,6 +361,8 @@
 
   async function renderPage(pageNumber) {
     const page = await pdfDoc.getPage(pageNumber);
+    
+    // Auto-scale viewport to high resolution, styling handles responsiveness
     const viewport = page.getViewport({ scale: 2.0 });
     const context = pdfCanvas.getContext('2d');
     
@@ -357,9 +401,11 @@
     }
   });
 
-  // 1. SIGNATURE MODAL HANDLERS
+  // SIGNATURE MODAL
   addSigBtn.addEventListener('click', () => {
     sigModal.style.display = 'flex';
+    
+    // Scale Canvas resolution properly to bounding box
     const rect = sigCanvas.getBoundingClientRect();
     sigCanvas.width = rect.width;
     sigCanvas.height = rect.height;
@@ -387,11 +433,11 @@
     startPlacementMode();
   });
 
-  // 2. TEXT MODAL HANDLERS
+  // TEXT MODAL
   addTextBtn.addEventListener('click', () => {
     textInputField.value = '';
     textModal.style.display = 'flex';
-    textInputField.focus();
+    setTimeout(() => textInputField.focus(), 50);
   });
 
   cancelTextBtn.addEventListener('click', () => textModal.style.display = 'none');
@@ -410,7 +456,7 @@
     startPlacementMode();
   });
 
-  // 3. IMAGE INPUT HANDLER
+  // IMAGE INPUT
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -424,12 +470,12 @@
         height: 120
       };
       startPlacementMode();
-      imageInput.value = ''; // Reset input
+      imageInput.value = '';
     };
     reader.readAsDataURL(file);
   });
 
-  // START PLACEMENT MODE
+  // PLACEMENT MODE
   function startPlacementMode() {
     pdfWrapper.classList.add('placement-mode');
     pdfCanvas.addEventListener('pointerdown', placeOverlay, { once: true });
@@ -447,7 +493,6 @@
     overlayPos.x = clickX - (overlayPos.width / 2);
     overlayPos.y = clickY - (overlayPos.height / 2);
 
-    // Build Content Preview
     overlayContent.innerHTML = '';
     if (pendingItem.type === 'png') {
       const img = document.createElement('img');
@@ -472,7 +517,7 @@
     activeOverlay.style.height = `${overlayPos.height}px`;
   }
 
-  // DRAG OVERLAY LOGIC
+  // DRAG OVERLAY
   function enableDragging() {
     let isDragging = false;
     let startX, startY;
@@ -507,7 +552,7 @@
     pendingItem = null;
   });
 
-  // SAFE IMAGE CLEANER (Prevents PDF-Lib saving crashes)
+  // DATA CLEANER
   function cleanPngDataUrl(dataUrl) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -524,7 +569,7 @@
     });
   }
 
-  // BAKE ANNOTATION PERMANENTLY INTO PDF
+  // BAKE TO PDF
   applyOverlayBtn.addEventListener('click', async () => {
     if (!pendingItem) return;
 
@@ -538,7 +583,6 @@
       const targetPage = pdfLibDoc.getPages()[currentPageIndex - 1];
       const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
 
-      // Screen Scale Matrix -> PDF Points
       const scaleX = pdfWidth / rect.width;
       const scaleY = pdfHeight / rect.height;
 
@@ -560,20 +604,18 @@
         const font = await pdfLibDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
         targetPage.drawText(pendingItem.text, {
           x: finalPdfX,
-          y: finalPdfY + (finalPdfHeight * 0.2), // Adjust offset baseline
+          y: finalPdfY + (finalPdfHeight * 0.2),
           size: Math.max(12, 14 * scaleY),
           font: font,
           color: PDFLib.rgb(0, 0, 0),
         });
       }
 
-      // Save updated document
       rawPdfBytes = await pdfLibDoc.save();
       
       activeOverlay.style.display = 'none';
       pendingItem = null;
 
-      // Refresh view
       await renderPdfDoc();
 
     } catch (err) {
@@ -585,7 +627,7 @@
     }
   });
 
-  // SAVE AND DOWNLOAD
+  // DOWNLOAD PDF
   saveBtn.addEventListener('click', () => {
     if (!rawPdfBytes) return;
     const blob = new Blob([rawPdfBytes], { type: 'application/pdf' });
@@ -593,6 +635,13 @@
     link.href = URL.createObjectURL(blob);
     link.download = `annotated_document.pdf`;
     link.click();
+  });
+
+  // Handle window dynamic resize
+  window.addEventListener('resize', () => {
+    if (pdfDoc) {
+      renderPage(currentPageIndex);
+    }
   });
 </script>
 </body>
