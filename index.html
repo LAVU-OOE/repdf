@@ -2012,80 +2012,101 @@
             }
 
             // ─── Save PDF ───
-            async function savePDF() {
-                if (!pdfDoc || !pdfFile) { alert('No PDF loaded.'); return; }
-                try {
-                    const pages = pdfDoc.getPages();
+async function savePDF() {
+    if (!pdfDoc || !pdfFile) { alert('No PDF loaded.'); return; }
+    try {
+        const pages = pdfDoc.getPages();
 
-                    for (const obj of objects) {
-                        const targetPage = pages[obj.page || 0] || pages[0];
-                        const { height } = targetPage.getSize();
+        // Map HTML dropdown values to valid PDFLib StandardFonts keys
+        const fontMap = {
+            'Helvetica': PDFLib.StandardFonts.Helvetica,
+            'Helvetica-Bold': PDFLib.StandardFonts.HelveticaBold,
+            'Helvetica-Oblique': PDFLib.StandardFonts.HelveticaOblique,
+            'Helvetica-BoldOblique': PDFLib.StandardFonts.HelveticaBoldOblique,
+            'Times-Roman': PDFLib.StandardFonts.TimesRoman,
+            'Times-Bold': PDFLib.StandardFonts.TimesRomanBold,
+            'Times-Italic': PDFLib.StandardFonts.TimesRomanItalic,
+            'Times-BoldItalic': PDFLib.StandardFonts.TimesRomanBoldItalic,
+            'Courier': PDFLib.StandardFonts.Courier,
+            'Courier-Bold': PDFLib.StandardFonts.CourierBold,
+            'Courier-Oblique': PDFLib.StandardFonts.CourierOblique,
+            'Courier-BoldOblique': PDFLib.StandardFonts.CourierBoldOblique,
+            'Symbol': PDFLib.StandardFonts.Symbol,
+            'ZapfDingbats': PDFLib.StandardFonts.ZapfDingbats
+        };
 
-                        if (obj.type === 'text') {
-                            const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
-                            const w = dims.width,
-                                h = dims.height;
-                            const pdfY = height - obj.y - h;
-                            if (obj.cover && obj.bgColor) {
-                                const rgb = hexToRgb(obj.bgColor);
-                                targetPage.drawRectangle({
-                                    x: obj.x,
-                                    y: pdfY,
-                                    width: w,
-                                    height: h,
-                                    color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                                });
-                            }
-                            const trgb = hexToRgb(obj.color || '#e74c3c');
-                            const font = await pdfDoc.embedFont(PDFLib.StandardFonts[obj.font] || PDFLib.StandardFonts
-                                .Helvetica);
-                            targetPage.drawText(obj.lines[0], {
-                                x: obj.x,
-                                y: pdfY + h,
-                                size: obj.size,
-                                font,
-                                color: PDFLib.rgb(trgb.r, trgb.g, trgb.b),
-                            });
-                        } else if (obj.type === 'image' || obj.type === 'signature') {
-                            const resp = await fetch(obj.data);
-                            const blob = await resp.blob();
-                            const buf = await blob.arrayBuffer();
-                            let img;
-                            if (blob.type === 'image/png') img = await pdfDoc.embedPng(buf);
-                            else if (blob.type === 'image/jpeg' || blob.type === 'image/jpg') img = await pdfDoc
-                                .embedJpg(buf);
-                            else img = await pdfDoc.embedPng(buf);
-                            const w = obj.width || img.width;
-                            const h = obj.height || img.height;
-                            const pdfY = height - obj.y - h;
-                            const rad = (obj.rotation || 0) * Math.PI / 180;
-                            targetPage.drawImage(img, {
-                                x: obj.x,
-                                y: pdfY,
-                                width: w,
-                                height: h,
-                                rotate: rad,
-                            });
-                        }
-                    }
+        for (const obj of objects) {
+            const targetPage = pages[obj.page || 0] || pages[0];
+            const { height } = targetPage.getSize();
 
-                    const pdfBytes = await pdfDoc.save();
-                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'edited_document.pdf';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(link.href);
-                    hasUnsavedChanges = false;
-                    setStatus('✅ PDF saved successfully!');
-                } catch (e) {
-                    console.error(e);
-                    alert('Save failed: ' + e.message);
+            if (obj.type === 'text') {
+                const dims = getTextDimensions(obj.lines[0], obj.font, obj.size);
+                const w = dims.width, h = dims.height;
+                const pdfY = height - obj.y - h;
+
+                if (obj.cover && obj.bgColor) {
+                    const rgb = hexToRgb(obj.bgColor);
+                    targetPage.drawRectangle({
+                        x: obj.x,
+                        y: pdfY,
+                        width: w,
+                        height: h,
+                        color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                    });
                 }
-            }
+                const trgb = hexToRgb(obj.color || '#e74c3c');
+                
+                // Select mapped standard font or fallback to Helvetica
+                const selectedFontKey = fontMap[obj.font] || PDFLib.StandardFonts.Helvetica;
+                const font = await pdfDoc.embedFont(selectedFontKey);
 
+                targetPage.drawText(obj.lines[0], {
+                    x: obj.x,
+                    y: pdfY + (h * 0.2), // Adjusted alignment offset
+                    size: obj.size,
+                    font,
+                    color: PDFLib.rgb(trgb.r, trgb.g, trgb.b),
+                });
+            } else if (obj.type === 'image' || obj.type === 'signature') {
+                const resp = await fetch(obj.data);
+                const blob = await resp.blob();
+                const buf = await blob.arrayBuffer();
+                let img;
+                if (blob.type === 'image/png') img = await pdfDoc.embedPng(buf);
+                else if (blob.type === 'image/jpeg' || blob.type === 'image/jpg') img = await pdfDoc.embedJpg(buf);
+                else img = await pdfDoc.embedPng(buf);
+
+                const w = obj.width || img.width;
+                const h = obj.height || img.height;
+                const pdfY = height - obj.y - h;
+                const rad = (obj.rotation || 0) * Math.PI / 180;
+
+                targetPage.drawImage(img, {
+                    x: obj.x,
+                    y: pdfY,
+                    width: w,
+                    height: h,
+                    rotate: PDFLib.radians(rad), // Wrapped in PDFLib.radians
+                });
+            }
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'edited_document.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        hasUnsavedChanges = false;
+        setStatus('✅ PDF saved successfully!');
+    } catch (e) {
+        console.error(e);
+        alert('Save failed: ' + e.message);
+    }
+}
             function hexToRgb(hex) {
                 const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                 return r ? { r: parseInt(r[1], 16) / 255, g: parseInt(r[2], 16) / 255, b: parseInt(r[3], 16) / 255 } :
